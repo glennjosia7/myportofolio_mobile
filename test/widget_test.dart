@@ -55,6 +55,34 @@ void main() {
     expect(find.text('Lihat Proyek'), findsOneWidget);
     expect(find.text('Tambah Proyek'), findsOneWidget);
     expect(find.text('Logout'), findsOneWidget);
+    expect(find.byIcon(Icons.folder), findsOneWidget);
+    expect(find.byIcon(Icons.add_circle), findsOneWidget);
+    expect(find.byIcon(Icons.logout), findsOneWidget);
+  });
+
+  testWidgets('setiap ItemCard memakai warna unik dari model', (tester) async {
+    await tester.pumpWidget(const MyApp());
+
+    final cards = tester.widgetList<ItemCard>(find.byType(ItemCard)).toList();
+    expect(cards, hasLength(3));
+
+    final colors = cards.map((card) => card.item.color).toList();
+    expect(colors.toSet(), hasLength(3));
+    expect(colors, const [
+      Color(0xFF1565C0),
+      Color(0xFF2E7D32),
+      Color(0xFFBF360C),
+    ]);
+
+    for (final card in cards) {
+      final material = tester.widget<Material>(
+        find.descendant(
+          of: find.byWidget(card),
+          matching: find.byType(Material),
+        ),
+      );
+      expect(material.color, card.item.color);
+    }
   });
 
   testWidgets('tap Lihat Proyek menampilkan SnackBar', (tester) async {
