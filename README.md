@@ -1,10 +1,11 @@
 # myportofolio_mobile
 
-Aplikasi mobile portofolio pribadi untuk Individual Assignment 7 mata kuliah
-Pemrograman Berbasis Platform (CSGE602022), Fakultas Ilmu Komputer, Universitas Indonesia.
-Proyek Flutter ini merupakan kelanjutan Tutorial 08 dan terpisah dari backend Django
-`myportofolio`. Aplikasi belum terhubung ke API DRF; seluruh data identitas dan menu masih
-berada di sisi klien.
+Aplikasi mobile portofolio pribadi untuk Tutorial 08, Individual Assignment 7, dan
+Tutorial 09 mata kuliah Pemrograman Berbasis Platform (CSGE602022), Fakultas Ilmu
+Komputer, Universitas Indonesia. Proyek Flutter ini terpisah dari backend Django
+`myportofolio`. Aplikasi belum terhubung ke API DRF; data identitas, menu, dan form
+masih berada di sisi klien. Tutorial 09 menambahkan drawer navigation, halaman form
+proyek, validasi input, dropdown kategori, dan dialog konfirmasi.
 
 ## Identitas Portofolio
 
@@ -20,7 +21,7 @@ berada di sisi klien.
 macOS            27.0.1 (Apple Silicon, arm64)
 Flutter          3.47.9 stable
 Dart             3.13.7
-Chrome           157.0.8103.39 (target web PASS)
+Chrome           157.0.8103.79 (target web PASS)
 Android SDK      36.0.0, Android toolchain PASS, lisensi diterima
 Xcode            warning: simulator runtime tidak terbaca, CocoaPods belum terpasang
 ```
@@ -31,13 +32,20 @@ Xcode            warning: simulator runtime tidak terbaca, CocoaPods belum terpa
 myportofolio_mobile/
 ├── lib/
 │   ├── main.dart              # bootstrap, MyApp, MaterialApp, tema
-│   └── menu.dart              # MyHomePage, InfoCard, ItemHomepage, ItemCard
+│   ├── screens/
+│   │   ├── menu.dart          # MyHomePage dan InfoCard
+│   │   └── project_form.dart  # ProjectFormPage dan state form
+│   └── widgets/
+│       ├── left_drawer.dart   # navigasi drawer
+│       └── project_card.dart  # ItemHomepage dan ItemCard
 ├── test/
-│   └── widget_test.dart       # 9 widget test
+│   └── widget_test.dart       # 20 widget test
 ├── docs/tugas-7/
 │   ├── PROGRESS_1.md          # identitas dan baseline
 │   ├── PROGRESS_2.md          # warna kartu dan aksesibilitas
 │   └── FINAL_REPORT.md        # laporan final Checkpoint 3
+├── docs/tutorial-9/
+│   └── FINAL_REPORT.md        # laporan Tutorial 09
 ├── android/ ios/ macos/ web/ linux/ windows/
 ├── analysis_options.yaml
 ├── pubspec.yaml
@@ -53,15 +61,23 @@ myportofolio_mobile/
   secondary amber 700) dan `useMaterial3: true`.
 - `home` diarahkan ke `const MyHomePage()`.
 
-`lib/menu.dart` berisi halaman dan komponen reusable:
+`lib/screens/menu.dart` berisi halaman utama dan komponen tampilan:
 
 - `MyHomePage` — `StatelessWidget`, menyimpan data identitas dan daftar menu.
 - `InfoCard` — kartu reusable dengan `title` dan `content`.
-- `ItemHomepage` — model data `name`, `icon`, dan `color` (bukan widget).
-- `ItemCard` — kartu aksi `Material` + `InkWell`; tap menampilkan SnackBar.
+
+`lib/widgets/` berisi komponen yang dipakai lintas halaman:
+
+- `project_card.dart` — `ItemHomepage` (model data `name`, `icon`, `color`) dan
+  `ItemCard` (`Material` + `InkWell`, SnackBar, navigasi Tambah Proyek).
+- `left_drawer.dart` — `LeftDrawer` dengan header dan navigasi Home/Add Project.
+
+`lib/screens/project_form.dart` berisi `ProjectFormPage` (`StatefulWidget`) dengan
+`Form`, lima input, validasi, dropdown kategori, dan `AlertDialog` konfirmasi.
 
 Layout memakai `Scaffold`, `AppBar`, `SingleChildScrollView`, `Column`, `Row`,
-`Expanded`, dan `GridView.count(crossAxisCount: 3, shrinkWrap: true)`.
+`Expanded`, `GridView.count(crossAxisCount: 3, shrinkWrap: true)`, `Form`,
+`TextFormField`, `DropdownButtonFormField`, `Drawer`, dan `ListView`.
 `FittedBox(scaleDown)` menjaga label kartu tetap muat pada layar sempit tanpa
 memotong teks.
 
@@ -81,8 +97,31 @@ Ketiganya memenuhi WCAG AA 4.5:1 untuk teks normal. Tap kartu menampilkan:
 Kamu telah menekan tombol [Nama Tombol]!
 ```
 
-Tombol Logout hanya menampilkan SnackBar; tidak ada autentikasi, API call, atau
-navigasi nyata pada assignment ini.
+Tombol **Tambah Proyek** menampilkan SnackBar lalu membuka `ProjectFormPage` dengan
+`Navigator.push()`, sehingga tombol Back browser/kembali sistem dapat dipakai.
+Tombol Lihat Proyek dan Logout hanya menampilkan SnackBar; tidak ada autentikasi,
+API call, atau logout nyata pada assignment ini.
+
+## Tutorial 09 — Navigation, Layouts, Forms, and Input Elements
+
+Tutorial 09 menambahkan alur navigasi dan form proyek:
+
+- `LeftDrawer` tersedia pada halaman utama dan halaman form.
+- Menu **Home** memakai `Navigator.pushReplacement()` ke `MyHomePage`.
+- Menu **Add Project** memakai `Navigator.pushReplacement()` ke `ProjectFormPage`.
+- Kartu **Tambah Proyek** memakai `Navigator.push()` dan tetap menampilkan SnackBar.
+- Form memiliki lima input: Nama Proyek, Deskripsi, Kategori, Teknologi, Tautan.
+- Nama dan Deskripsi wajib diisi; input whitespace-only ditolak.
+- Kategori memakai `DropdownButtonFormField` dengan lima pilihan dan default
+  `Web Development`.
+- Tombol Save memvalidasi seluruh form sebelum menampilkan `AlertDialog`.
+- Dialog menampilkan lima nilai input dan tombol OK menutup dialog, mereset form,
+  mengembalikan kategori ke default, serta membersihkan state internal.
+- Data **tidak** disimpan ke database/API; dialog hanya menampilkan data sementara.
+
+Migrasi Material mengikuti Tutorial 09: proyek memakai `material_ui: ^1.11.1`
+(Flutter ≥3.47) dan import `package:material_ui/material_ui.dart` pada
+`main.dart`, screens, widgets, dan test.
 
 ## Menjalankan Aplikasi
 
@@ -107,18 +146,20 @@ flutter test
 flutter build web
 ```
 
-Hasil verifikasi final Checkpoint 3:
+Hasil verifikasi Tutorial 09:
 
 ```text
-dart format      : 3 file, 0 changed
+dart format      : 6 file, 0 changed
 flutter analyze  : No issues found!
-flutter test     : 9 test lulus
+flutter test     : 20 test lulus
 flutter build web: ✓ Built build/web
 ```
 
 Widget test mencakup identitas personal, `MyHomePage` sebagai `StatelessWidget`,
 tiga ItemCard beserta ikon, tiga warna unik dan pemakaian warna model pada
-`Material`, tiga SnackBar, serta viewport 320x640 tanpa exception.
+`Material`, tiga SnackBar, drawer, navigasi drawer dan tombol, lima input form,
+validasi nama/deskripsi, dropdown kategori, dialog lima nilai, reset tanpa stale
+state, serta viewport 320x640 tanpa exception.
 
 ## Riwayat Pengembangan
 
@@ -127,7 +168,8 @@ tiga ItemCard beserta ikon, tiga warna unik dan pemakaian warna model pada
 | Tutorial 08 | `9783fb4` | Aplikasi dasar, `main.dart`/`menu.dart`, InfoCard, ItemCard, SnackBar |
 | Checkpoint 1 | `eb96955` | Identitas Glenn/NPM/PBP F, regression test, progress note |
 | Checkpoint 2 | `e080acd` | `ItemHomepage.color`, tiga warna kontras, test warna |
-| Checkpoint 3 | dibuat pengguna setelah finalisasi | README final, enam refleksi, AI disclosure, laporan final |
+| Checkpoint 3 | `8d6512c` | README final, enam refleksi, AI disclosure, laporan final |
+| Tutorial 09 | dibuat pengguna setelah finalisasi | Drawer, form proyek, navigasi, Material UI, refactor screens/widgets |
 
 Tanggal commit tidak diubah atau dimanipulasi. Riwayat lengkap dapat dilihat dengan
 `git log --oneline`.
@@ -138,6 +180,11 @@ Tanggal commit tidak diubah atau dimanipulasi. Riwayat lengkap dapat dilihat den
 - Tiga InfoCard menampilkan NPM `2506614712`, nama `Glenn Josia Devano`, kelas `PBP F`.
 - Tiga ItemCard tampil dengan ikon dan label yang sesuai.
 - Ketiga kartu memakai warna berbeda dan SnackBar yang benar.
+- Drawer dapat dibuka; menu Home dan Add Project bernavigasi dengan benar.
+- Kartu Tambah Proyek membuka form dan dapat kembali dengan Back.
+- Form menampilkan lima input, memvalidasi input kosong, dan menampilkan dialog
+  berisi lima nilai setelah input valid.
+- Tombol OK menutup dialog dan mereset form tanpa state lama.
 - Layout tidak overflow pada 320x640, 390x844, 768x1024, dan 1280x800.
 - Tidak ada console error pada verifikasi browser Chromium.
 
@@ -226,7 +273,8 @@ Tanggal commit tidak diubah atau dimanipulasi. Riwayat lengkap dapat dilihat den
   penyusunan rencana tiga checkpoint serta prompt kerja.
 - **OpenCode dengan model DeepSeek V4.1 Flash** — inspeksi repository, perubahan kode,
   pembuatan test, `flutter analyze`, `flutter test`, `flutter build web`, verifikasi
-  browser melalui Playwright, dan penyusunan dokumentasi progres.
+  browser melalui Playwright, termasuk implementasi Tutorial 09, dan penyusunan
+  dokumentasi progres.
 - **Human developer (Glenn Josia Devano)** — menetapkan identitas portofolio, memilih
   alur tiga checkpoint, menyiapkan environment pengembangan, serta menjalankan staging,
   commit, dan push secara manual.
@@ -259,7 +307,8 @@ Bukti yang tersedia adalah catatan progres dan riwayat commit:
   dengan `pdftotext` dan tetap diverifikasi terhadap checklist manual.
 - Layout sempat overflow pada viewport sempit. Overflow 0.286 px pada Row InfoCard dan
   16–37 px pada ItemCard ditemukan lewat test/browser, lalu diperbaiki dengan `Expanded`
-  dan `FittedBox(scaleDown)`.
+  dan `FittedBox(scaleDown)`. Pada Tutorial 09, header drawer dan dropdown kategori
+  juga memerlukan penyesuaian (`FittedBox` dan `isExpanded`) agar tidak overflow.
 - Kandidat warna deep orange 800 (`#D84315`) ditolak karena kontras putih hanya 4.44:1;
   diganti deep orange 900 (`#BF360C`) dengan 5.60:1.
 - Widget test memakai font Ahem yang metriknya berbeda dari browser; hasil test tidak
@@ -271,16 +320,17 @@ Bukti yang tersedia adalah catatan progres dan riwayat commit:
 
 ## Keterbatasan
 
-- Belum ada integrasi API DRF, autentikasi, atau navigasi. Tombol menu hanya menampilkan
-  SnackBar sesuai requirement assignment.
+- Belum ada integrasi API DRF atau autentikasi. Navigasi dan form bersifat lokal;
+  tombol Logout hanya menampilkan SnackBar.
+- Data form proyek hanya ditampilkan pada `AlertDialog` dan tidak disimpan ke
+  database, file, atau API.
 - Android emulator dan perangkat fisik belum dijalankan; iOS belum diverifikasi karena
   warning Xcode/CocoaPods.
 - Verifikasi visual dilakukan pada Chromium web (Playwright), bukan window Chrome
   interaktif atau perangkat native.
 - NPM dapat terbungkus beberapa baris pada layar 320–390 px, tetapi tetap terbaca
   lengkap dan tidak overflow.
-- README ini adalah dokumentasi final Assignment 7; tautan commit final baru tersedia
-  setelah pengguna melakukan commit dan push manual.
+- Tautan commit Tutorial 09 baru tersedia setelah pengguna melakukan commit dan push manual.
 
 ## Repository
 
@@ -290,4 +340,4 @@ git@github.com:glennjosia7/myportofolio_mobile.git
 ```
 
 Repositori harus tetap publik. Submisi SCELE menggunakan tautan commit final, bukan
-tautan halaman repository. Deadline: 16 November 2026, 23.59 WIB.
+tautan halaman repository. Deadline Tutorial 09: 18 November 2026, 23.59 WIB.
