@@ -1,4 +1,6 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:myportofolio_mobile/screens/certification_form.dart';
+import 'package:myportofolio_mobile/screens/project_form.dart';
 import 'package:myportofolio_mobile/widgets/left_drawer.dart';
 import 'package:myportofolio_mobile/widgets/project_card.dart';
 
@@ -11,8 +13,19 @@ class MyHomePage extends StatelessWidget {
 
   final List<ItemHomepage> items = const [
     ItemHomepage('Lihat Proyek', Icons.folder, Color(0xFF1565C0)),
-    ItemHomepage('Tambah Proyek', Icons.add_circle, Color(0xFF2E7D32)),
+    ItemHomepage(
+      'Tambah Proyek',
+      Icons.add_circle,
+      Color(0xFF2E7D32),
+      destination: ProjectFormPage(),
+    ),
     ItemHomepage('Logout', Icons.logout, Color(0xFFBF360C)),
+    ItemHomepage(
+      'Tambah Sertifikasi',
+      Icons.workspace_premium,
+      Color(0xFF6A1B9A),
+      destination: CertificationFormPage(),
+    ),
   ];
 
   @override

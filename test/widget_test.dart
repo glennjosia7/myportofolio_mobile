@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:myportofolio_mobile/main.dart';
+import 'package:myportofolio_mobile/screens/certification_form.dart';
 import 'package:myportofolio_mobile/screens/menu.dart';
 import 'package:myportofolio_mobile/screens/project_form.dart';
 import 'package:myportofolio_mobile/widgets/left_drawer.dart';
@@ -82,29 +83,32 @@ void main() {
     expect(homePage, isA<StatelessWidget>());
   });
 
-  testWidgets('tiga menu ItemCard tampil dengan ikon', (tester) async {
+  testWidgets('empat menu ItemCard tampil dengan ikon', (tester) async {
     await _pumpApp(tester);
 
     expect(find.text('Lihat Proyek'), findsOneWidget);
     expect(find.text('Tambah Proyek'), findsOneWidget);
     expect(find.text('Logout'), findsOneWidget);
+    expect(find.text('Tambah Sertifikasi'), findsOneWidget);
     expect(find.byIcon(Icons.folder), findsOneWidget);
     expect(find.byIcon(Icons.add_circle), findsOneWidget);
     expect(find.byIcon(Icons.logout), findsOneWidget);
+    expect(find.byIcon(Icons.workspace_premium), findsOneWidget);
   });
 
   testWidgets('setiap ItemCard memakai warna unik dari model', (tester) async {
     await _pumpApp(tester);
 
     final cards = tester.widgetList<ItemCard>(find.byType(ItemCard)).toList();
-    expect(cards, hasLength(3));
+    expect(cards, hasLength(4));
 
     final colors = cards.map((card) => card.item.color).toList();
-    expect(colors.toSet(), hasLength(3));
+    expect(colors.toSet(), hasLength(4));
     expect(colors, const [
       Color(0xFF1565C0),
       Color(0xFF2E7D32),
       Color(0xFFBF360C),
+      Color(0xFF6A1B9A),
     ]);
 
     for (final card in cards) {
@@ -156,7 +160,7 @@ void main() {
     expect(find.text('Kamu telah menekan tombol Logout!'), findsOneWidget);
   });
 
-  testWidgets('drawer dapat dibuka dan menampilkan dua menu', (tester) async {
+  testWidgets('drawer dapat dibuka dan menampilkan tiga menu', (tester) async {
     await _pumpApp(tester);
     await _openDrawer(tester);
 
@@ -168,6 +172,7 @@ void main() {
     );
     expect(find.text('Home'), findsOneWidget);
     expect(find.text('Add Project'), findsOneWidget);
+    expect(find.text('Add Certification'), findsOneWidget);
   });
 
   testWidgets('drawer Add Project membuka ProjectFormPage', (tester) async {
@@ -203,6 +208,93 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(MyHomePage), findsOneWidget);
+  });
+
+  testWidgets('kartu Sertifikasi membuka tiga input dan Back kembali ke Home', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 640);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await _pumpApp(tester);
+    await tester.tap(find.text('Tambah Sertifikasi'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(CertificationFormPage), findsOneWidget);
+    expect(find.byType(TextFormField), findsNWidgets(3));
+    expect(find.text('Nama Sertifikasi'), findsOneWidget);
+    expect(find.text('Lembaga Penerbit'), findsOneWidget);
+    expect(find.text('ID Kredensial'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.byType(MyHomePage), findsOneWidget);
+  });
+
+  testWidgets('Add Certification dari drawer dapat kembali lewat Home', (
+    tester,
+  ) async {
+    await _pumpApp(tester);
+    await _openDrawer(tester);
+    await tester.tap(find.text('Add Certification'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(CertificationFormPage), findsOneWidget);
+    await _openDrawer(tester);
+    expect(find.byType(LeftDrawer), findsOneWidget);
+    await tester.tap(find.text('Home'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(MyHomePage, skipOffstage: false), findsOneWidget);
+    expect(
+      find.byType(CertificationFormPage, skipOffstage: false),
+      findsNothing,
+    );
+    final navigator = tester.state<NavigatorState>(find.byType(Navigator));
+    expect(navigator.canPop(), isFalse);
+  });
+
+  testWidgets('perpindahan antarform tidak menumpuk halaman', (tester) async {
+    await _pumpApp(tester);
+    await _openFormFromCard(tester);
+
+    await _openDrawer(tester);
+    await tester.tap(find.text('Add Certification'));
+    await tester.pumpAndSettle();
+    expect(find.byType(CertificationFormPage), findsOneWidget);
+    expect(find.byType(ProjectFormPage, skipOffstage: false), findsNothing);
+
+    await _openDrawer(tester);
+    await tester.tap(find.text('Add Project'));
+    await tester.pumpAndSettle();
+    expect(find.byType(ProjectFormPage), findsOneWidget);
+    expect(
+      find.byType(CertificationFormPage, skipOffstage: false),
+      findsNothing,
+    );
+
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.byType(MyHomePage), findsOneWidget);
+  });
+
+  testWidgets('memilih form Sertifikasi yang aktif mempertahankan isian', (
+    tester,
+  ) async {
+    await _pumpApp(tester);
+    await tester.tap(find.text('Tambah Sertifikasi'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextFormField).first, 'Sertifikasi A');
+
+    await _openDrawer(tester);
+    await tester.tap(find.text('Add Certification'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(CertificationFormPage), findsOneWidget);
+    expect(find.text('Sertifikasi A'), findsOneWidget);
   });
 
   testWidgets('lima field form dan kategori default tampil', (tester) async {

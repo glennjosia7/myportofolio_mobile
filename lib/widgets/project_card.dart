@@ -1,12 +1,13 @@
 import 'package:material_ui/material_ui.dart';
-import 'package:myportofolio_mobile/screens/project_form.dart';
 
 class ItemHomepage {
   final String name;
   final IconData icon;
   final Color color;
 
-  const ItemHomepage(this.name, this.icon, this.color);
+  final Widget? destination;
+
+  const ItemHomepage(this.name, this.icon, this.color, {this.destination});
 }
 
 class ItemCard extends StatelessWidget {
@@ -30,10 +31,11 @@ class ItemCard extends StatelessWidget {
               ),
             );
 
-          if (item.name == 'Tambah Proyek') {
+          final destination = item.destination;
+          if (destination != null) {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => const ProjectFormPage()),
+              MaterialPageRoute<void>(builder: (_) => destination),
             );
           }
         },

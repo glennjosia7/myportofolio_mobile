@@ -1,9 +1,25 @@
 import 'package:material_ui/material_ui.dart';
-import 'package:myportofolio_mobile/screens/menu.dart';
+import 'package:myportofolio_mobile/screens/certification_form.dart';
 import 'package:myportofolio_mobile/screens/project_form.dart';
 
 class LeftDrawer extends StatelessWidget {
   const LeftDrawer({super.key});
+
+  void _openForm<T extends Widget>(BuildContext context, T page) {
+    final navigator = Navigator.of(context);
+    final fromHome = ModalRoute.of(context)!.isFirst;
+    final alreadyOpen = context.findAncestorWidgetOfExactType<T>() != null;
+
+    navigator.pop(); // Tutup drawer sebelum berpindah halaman.
+    if (alreadyOpen) return;
+
+    final route = MaterialPageRoute<void>(builder: (_) => page);
+    if (fromHome) {
+      navigator.push(route);
+    } else {
+      navigator.pushReplacement(route);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -40,23 +56,20 @@ class LeftDrawer extends StatelessWidget {
             leading: const Icon(Icons.home_outlined),
             title: const Text('Home'),
             onTap: () {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => const MyHomePage()),
-              );
+              final navigator = Navigator.of(context);
+              navigator.pop();
+              navigator.popUntil((route) => route.isFirst);
             },
           ),
           ListTile(
             leading: const Icon(Icons.add_circle_outline),
             title: const Text('Add Project'),
-            onTap: () {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const ProjectFormPage(),
-                ),
-              );
-            },
+            onTap: () => _openForm(context, const ProjectFormPage()),
+          ),
+          ListTile(
+            leading: const Icon(Icons.workspace_premium_outlined),
+            title: const Text('Add Certification'),
+            onTap: () => _openForm(context, const CertificationFormPage()),
           ),
         ],
       ),
