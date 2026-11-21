@@ -1,11 +1,12 @@
 # myportofolio_mobile
 
-Aplikasi mobile portofolio pribadi untuk Tutorial 08, Individual Assignment 7, dan
-Tutorial 09 mata kuliah Pemrograman Berbasis Platform (CSGE602022), Fakultas Ilmu
+Aplikasi mobile portofolio pribadi untuk Tutorial 08–09 dan Tugas Individu 7–8
+mata kuliah Pemrograman Berbasis Platform (CSGE602022), Fakultas Ilmu
 Komputer, Universitas Indonesia. Proyek Flutter ini terpisah dari backend Django
 `myportofolio`. Aplikasi belum terhubung ke API DRF; data identitas, menu, dan form
 masih berada di sisi klien. Tutorial 09 menambahkan drawer navigation, halaman form
-proyek, validasi input, dropdown kategori, dan dialog konfirmasi.
+proyek, validasi input, dropdown kategori, dan dialog konfirmasi. Tugas 8
+menambahkan formulir Sertifikasi, pemilih tanggal, dan dialog ringkasan isian.
 
 ## Identitas Portofolio
 
@@ -34,18 +35,24 @@ myportofolio_mobile/
 │   ├── main.dart              # bootstrap, MyApp, MaterialApp, tema
 │   ├── screens/
 │   │   ├── menu.dart          # MyHomePage dan InfoCard
-│   │   └── project_form.dart  # ProjectFormPage dan state form
+│   │   ├── project_form.dart  # ProjectFormPage dan state form
+│   │   └── certification_form.dart # form, validasi, dan ringkasan sertifikasi
 │   └── widgets/
 │       ├── left_drawer.dart   # navigasi drawer
 │       └── project_card.dart  # ItemHomepage dan ItemCard
 ├── test/
-│   └── widget_test.dart       # 20 widget test
+│   ├── widget_test.dart       # 24 test navigasi dan regresi
+│   └── certification_form_test.dart # 9 test validasi, dialog, dan viewport
 ├── docs/tugas-7/
 │   ├── PROGRESS_1.md          # identitas dan baseline
 │   ├── PROGRESS_2.md          # warna kartu dan aksesibilitas
 │   └── FINAL_REPORT.md        # laporan final Checkpoint 3
 ├── docs/tutorial-9/
 │   └── FINAL_REPORT.md        # laporan Tutorial 09
+├── docs/tugas-8/
+│   ├── PROGRESS_1.md         # fondasi dan navigasi
+│   ├── PROGRESS_2.md         # validasi, dialog, dan QA
+│   └── FINAL_REPORT.md       # audit dan verifikasi akhir
 ├── android/ ios/ macos/ web/ linux/ windows/
 ├── analysis_options.yaml
 ├── pubspec.yaml
@@ -68,12 +75,15 @@ myportofolio_mobile/
 
 `lib/widgets/` berisi komponen yang dipakai lintas halaman:
 
-- `project_card.dart` — `ItemHomepage` (model data `name`, `icon`, `color`) dan
-  `ItemCard` (`Material` + `InkWell`, SnackBar, navigasi Tambah Proyek).
-- `left_drawer.dart` — `LeftDrawer` dengan header dan navigasi Home/Add Project.
+- `project_card.dart` — `ItemHomepage` menyimpan `name`, `icon`, `color`, dan
+  tujuan opsional. `ItemCard` menampilkan SnackBar dan membuka halaman tujuan.
+- `left_drawer.dart` — `LeftDrawer` dengan menu Home, Add Project, dan Add Certification.
 
 `lib/screens/project_form.dart` berisi `ProjectFormPage` (`StatefulWidget`) dengan
 `Form`, lima input, validasi, dropdown kategori, dan `AlertDialog` konfirmasi.
+
+`lib/screens/certification_form.dart` berisi `CertificationFormPage` dengan empat
+input teks, dua pemilih tanggal, validasi per isian, dan dialog ringkasan.
 
 Layout memakai `Scaffold`, `AppBar`, `SingleChildScrollView`, `Column`, `Row`,
 `Expanded`, `GridView.count(crossAxisCount: 3, shrinkWrap: true)`, `Form`,
@@ -88,10 +98,11 @@ memotong teks.
 | Lihat Proyek | `Icons.folder` | `#1565C0` (blue 800) | 5.75:1 |
 | Tambah Proyek | `Icons.add_circle` | `#2E7D32` (green 800) | 5.13:1 |
 | Logout | `Icons.logout` | `#BF360C` (deep orange 900) | 5.60:1 |
+| Tambah Sertifikasi | `Icons.workspace_premium` | `#6A1B9A` (purple 800) | 9.39:1 |
 
 Warna disimpan di `ItemHomepage.color` dan dipakai langsung oleh `ItemCard`
 (`Material(color: item.color)`), tanpa percabangan berdasarkan nama tombol.
-Ketiganya memenuhi WCAG AA 4.5:1 untuk teks normal. Tap kartu menampilkan:
+Keempatnya memenuhi WCAG AA 4.5:1 untuk teks normal. Tap kartu menampilkan:
 
 ```text
 Kamu telah menekan tombol [Nama Tombol]!
@@ -107,8 +118,8 @@ API call, atau logout nyata pada assignment ini.
 Tutorial 09 menambahkan alur navigasi dan form proyek:
 
 - `LeftDrawer` tersedia pada halaman utama dan halaman form.
-- Menu **Home** memakai `Navigator.pushReplacement()` ke `MyHomePage`.
-- Menu **Add Project** memakai `Navigator.pushReplacement()` ke `ProjectFormPage`.
+- Pada Tutorial 09, **Home** dan **Add Project** memakai `Navigator.pushReplacement()`.
+  Tugas 8 memperbarui navigasi drawer agar Home tetap menjadi rute dasar.
 - Kartu **Tambah Proyek** memakai `Navigator.push()` dan tetap menampilkan SnackBar.
 - Form memiliki lima input: Nama Proyek, Deskripsi, Kategori, Teknologi, Tautan.
 - Nama dan Deskripsi wajib diisi; input whitespace-only ditolak.
@@ -125,7 +136,7 @@ Migrasi Material mengikuti Tutorial 09: proyek memakai `material_ui: ^1.11.1`
 
 ## Menjalankan Aplikasi
 
-Prasyarat: Flutter SDK dan target perangkat sudah terpasang.
+Prasyarat: Flutter 3.47.9 dengan Dart 3.13.7 dan target perangkat yang sudah terpasang.
 
 ```bash
 flutter pub get
@@ -169,12 +180,15 @@ state, serta viewport 320x640 tanpa exception.
 | Checkpoint 1 | `eb96955` | Identitas Glenn/NPM/PBP F, regression test, progress note |
 | Checkpoint 2 | `e080acd` | `ItemHomepage.color`, tiga warna kontras, test warna |
 | Checkpoint 3 | `8d6512c` | README final, enam refleksi, AI disclosure, laporan final |
-| Tutorial 09 | dibuat pengguna setelah finalisasi | Drawer, form proyek, navigasi, Material UI, refactor screens/widgets |
+| Tutorial 09 | `53ba8df` | Drawer, form proyek, navigasi, Material UI, refactor screens/widgets |
+
+Progres Tugas 8 tercatat di [tahap fondasi](docs/tugas-8/PROGRESS_1.md),
+[tahap validasi](docs/tugas-8/PROGRESS_2.md), dan [laporan akhir](docs/tugas-8/FINAL_REPORT.md).
 
 Tanggal commit tidak diubah atau dimanipulasi. Riwayat lengkap dapat dilihat dengan
 `git log --oneline`.
 
-## Fungsionalitas Terverifikasi
+## Fungsionalitas Terverifikasi pada Tutorial 09
 
 - AppBar `MyPortfolio` tampil.
 - Tiga InfoCard menampilkan NPM `2506614712`, nama `Glenn Josia Devano`, kelas `PBP F`.
@@ -265,7 +279,54 @@ Tanggal commit tidak diubah atau dimanipulasi. Riwayat lengkap dapat dilihat den
    atau teks SnackBar dapat diuji dengan hot reload, sedangkan perubahan konfigurasi
    platform memerlukan restart/rebuild penuh.
 
+### Tugas 8
+
+1. `Navigator.push()` menambah rute dan mempertahankan halaman sebelumnya.
+   `Navigator.pushReplacement()` mengganti rute paling atas. `Navigator.pop()`
+   menutup rute atau elemen aktif seperti drawer. Kartu **Tambah Sertifikasi**
+   memanggil `Navigator.push()` agar Back kembali ke Home. Opsi **Home** di
+   drawer menutup panel dengan `pop()`, lalu menjalankan
+   `popUntil((route) => route.isFirst)`. Saat berpindah antarform melalui drawer,
+   `pushReplacement()` mengganti form aktif sambil mempertahankan Home.
+2. `Scaffold` menyediakan struktur halaman yang konsisten melalui slot `appBar`,
+   `drawer`, dan `body`. Home dan kedua halaman form memakai `LeftDrawer` yang sama,
+   sehingga daftar tujuan konsisten. Home dan Form Sertifikasi mengambil warna
+   latar `AppBar` dari `Theme.of(context).colorScheme.primary`, yang dibentuk dari
+   seed indigo di `MyApp`.
+3. Saya menyusun input Form Sertifikasi dalam satu `Column` agar mudah diikuti.
+   `EdgeInsets.all(16)` memberi jarak di tepi dan `Column.spacing` memisahkan
+   kontrol. `SafeArea` menjaga isi dari area sistem. `ConstrainedBox` membatasi
+   lebar form menjadi 560 piksel logis di layar lebar. Saat layar sempit atau ruang
+   berkurang karena papan ketik, `SingleChildScrollView` memungkinkan pengguna
+   menggulir ke isian terakhir dan tombol **Simpan**.
+4. `GlobalKey<FormState>` memberi tombol **Simpan** akses ke state form.
+   `validate()` menjalankan `validator` setiap isian dan menampilkan pesan pada
+   kolom yang bermasalah. Contohnya, `https:///verify` ditolak karena tidak memiliki
+   host. `TextInputType.url` hanya menyesuaikan papan ketik. Format URL tetap
+   diperiksa sebelum `FormState.save()` mengambil nilai dan membuka `AlertDialog`.
+   Ringkasan bersifat lokal dan data form tidak disimpan permanen.
+
+#### Penggunaan AI Tugas 8
+
+Saya menggunakan ChatGPT untuk menyusun prompt kerja tiga checkpoint dan Codex
+untuk meninjau PDF dan kode, mengimplementasikan form, menulis widget test, serta
+menyusun dokumentasi dan menjalankan pemeriksaan teknis. Dua arahan yang saya
+gunakan adalah “Kerjakan hanya scope Checkpoint 2 sesuai megaprompt utama” dan
+“Jangan mengubah fitur yang sudah benar kecuali ditemukan bug.” Saya memisahkan
+fondasi navigasi, validasi dan dialog, serta dokumentasi akhir agar hasil tiap
+tahap dapat diperiksa sebelum commit berikutnya.
+
+Runner widget test Codex terblokir oleh izin soket localhost. Saya menjalankan
+uji di Terminal macOS dan menerapkan patch koreksi pengujian. Pada kasus 320×640,
+test perlu menunggu SnackBar navigasi berakhir sebelum mensimulasikan papan ketik
+dan memeriksa apakah tombol **Simpan** dapat diketuk. Terminal mencatat 33 test
+lulus setelah koreksi. Saya menjalankan commit dan push CP1–CP2 melalui Terminal.
+Hasil pengujian dan jejak progres tersedia di [laporan CP2](docs/tugas-8/PROGRESS_2.md)
+dan [laporan akhir](docs/tugas-8/FINAL_REPORT.md).
+
 ## AI Usage Disclosure
+
+Bagian ini mencatat penggunaan AI pada Tugas 7 dan Tutorial 09.
 
 ### Tools yang Digunakan
 
@@ -330,7 +391,7 @@ Bukti yang tersedia adalah catatan progres dan riwayat commit:
   interaktif atau perangkat native.
 - NPM dapat terbungkus beberapa baris pada layar 320–390 px, tetapi tetap terbaca
   lengkap dan tidak overflow.
-- Tautan commit Tutorial 09 baru tersedia setelah pengguna melakukan commit dan push manual.
+- Commit Tutorial 09 tersedia di [`53ba8df`](https://github.com/glennjosia7/myportofolio_mobile/commit/53ba8df25863601d6aa81501cae8579747f2ab0b).
 
 ## Repository
 
@@ -340,4 +401,5 @@ git@github.com:glennjosia7/myportofolio_mobile.git
 ```
 
 Repositori harus tetap publik. Submisi SCELE menggunakan tautan commit final, bukan
-tautan halaman repository. Deadline Tutorial 09: 18 November 2026, 23.59 WIB.
+tautan halaman repository. Tenggat Tutorial 09 adalah 18 November 2026 pukul
+23.59 WIB. Tenggat Tugas 8 adalah 23 November 2026 pukul 23.59 WIB.
