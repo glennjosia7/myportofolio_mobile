@@ -210,7 +210,7 @@ void main() {
     expect(find.byType(MyHomePage), findsOneWidget);
   });
 
-  testWidgets('kartu Sertifikasi membuka tiga input dan Back kembali ke Home', (
+  testWidgets('kartu Sertifikasi membuka form dan Back kembali ke Home', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(320, 640);
@@ -219,14 +219,20 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
 
     await _pumpApp(tester);
-    await tester.tap(find.text('Tambah Sertifikasi'));
+    final card = find.text('Tambah Sertifikasi');
+    await tester.ensureVisible(card);
+    await tester.pumpAndSettle();
+    await tester.tap(card.hitTestable());
     await tester.pumpAndSettle();
 
     expect(find.byType(CertificationFormPage), findsOneWidget);
-    expect(find.byType(TextFormField), findsNWidgets(3));
+    expect(find.byType(TextFormField), findsNWidgets(4));
     expect(find.text('Nama Sertifikasi'), findsOneWidget);
     expect(find.text('Lembaga Penerbit'), findsOneWidget);
     expect(find.text('ID Kredensial'), findsOneWidget);
+    expect(find.text('URL Kredensial'), findsOneWidget);
+    expect(find.text('Tanggal Terbit'), findsOneWidget);
+    expect(find.text('Tanggal Kedaluwarsa (opsional)'), findsOneWidget);
     expect(tester.takeException(), isNull);
 
     await tester.binding.handlePopRoute();
@@ -285,7 +291,10 @@ void main() {
     tester,
   ) async {
     await _pumpApp(tester);
-    await tester.tap(find.text('Tambah Sertifikasi'));
+    final card = find.text('Tambah Sertifikasi');
+    await tester.ensureVisible(card);
+    await tester.pumpAndSettle();
+    await tester.tap(card.hitTestable());
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextFormField).first, 'Sertifikasi A');
 
