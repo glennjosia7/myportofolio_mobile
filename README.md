@@ -3,10 +3,11 @@
 Aplikasi mobile portofolio pribadi untuk Tutorial 08–09 dan Tugas Individu 7–8
 mata kuliah Pemrograman Berbasis Platform (CSGE602022), Fakultas Ilmu
 Komputer, Universitas Indonesia. Proyek Flutter ini terpisah dari backend Django
-`myportofolio`. Aplikasi belum terhubung ke API DRF; data identitas, menu, dan form
-masih berada di sisi klien. Tutorial 09 menambahkan drawer navigation, halaman form
+`myportofolio`. Identitas dan menu berada di sisi klien. Tutorial 09 menambahkan
+drawer navigation, halaman form
 proyek, validasi input, dropdown kategori, dan dialog konfirmasi. Tugas 8
 menambahkan formulir Sertifikasi, pemilih tanggal, dan dialog ringkasan isian.
+Tutorial 10 menghubungkan fitur Projects dengan API DRF Django.
 
 ## Identitas Portofolio
 
@@ -403,3 +404,52 @@ git@github.com:glennjosia7/myportofolio_mobile.git
 Repositori harus tetap publik. Submisi SCELE menggunakan tautan commit final, bukan
 tautan halaman repository. Tenggat Tutorial 09 adalah 18 November 2026 pukul
 23.59 WIB. Tenggat Tugas 8 adalah 23 November 2026 pukul 23.59 WIB.
+
+## Tutorial 10 — Integrasi Django REST Framework
+
+**Lihat Proyek** membuka daftar publik dari Django. Daftar mendukung refresh,
+retry, dan layar detail. **Tambah Proyek** meminta login jika diperlukan. Form
+memakai lima isian `ProjectSerializer` dan menampilkan ringkasan dari respons
+`201 Created`. POST tetap hanya untuk superuser. Tautan proyek dan gambar
+opsional sesuai model Django, dan jika diisi diperiksa sebagai URL HTTP/HTTPS.
+Form Sertifikasi Tugas 8 tetap lokal.
+
+`lib/models/project.dart` memakai `json_serializable`. `ApiClient` mengirim JSON
+ke `/api/v1/projects/`, `/api/v1/auth/token/`, dan `/api/v1/auth/logout/`.
+`MultiProvider` menyediakan `ApiClient` dan `AuthState`. Token disimpan di memori
+selama aplikasi berjalan. Logout menghapus token lokal dan meminta backend
+mencabutnya. Kesalahan jaringan saat logout diberitahukan lewat SnackBar.
+
+### Menjalankan integrasi lokal
+
+Terapkan perubahan backend Tutorial 10 di repo Django, pasang dependensi, lalu
+jalankan migrasi dan server lokal:
+
+```bash
+python -m pip install -r requirements.txt
+python manage.py migrate
+python manage.py runserver 127.0.0.1:8000
+```
+
+Di repo Flutter:
+
+```bash
+flutter pub get
+dart run build_runner build
+flutter analyze
+flutter test
+flutter run -d chrome --dart-define=API_BASE_URL=http://localhost:8000
+```
+
+`project.g.dart` dibuat oleh generator dan diabaikan oleh Git. Commit
+`pubspec.lock` setelah resolusi dependensi berhasil. Emulator Android memakai
+`http://10.0.2.2:8000` sebagai alamat host secara default. Cleartext HTTP
+Android hanya diaktifkan pada build debug. Untuk APK release gunakan backend
+HTTPS dan `flutter build apk --release --dart-define=API_BASE_URL=https://alamat-backend`.
+
+Workflow `.github/workflows/main.yaml` menjalankan format, analisis, dan test
+sebelum membangun APK release. Kedua job menjalankan code generation. Isi variabel
+repository `API_BASE_URL` dengan URL HTTPS deployment bila APK akan terhubung ke
+backend di luar pengembangan lokal. Setelah push, periksa job `build` dan
+`build_apk` serta unduh artefak `app-release-apk` dari tab Actions.
+Lihat [laporan Tutorial 10](docs/tutorial-10/FINAL_REPORT.md) untuk status verifikasi.

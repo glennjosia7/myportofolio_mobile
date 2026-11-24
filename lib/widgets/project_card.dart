@@ -1,4 +1,5 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:myportofolio_mobile/widgets/auth_guard.dart';
 
 class ItemHomepage {
   final String name;
@@ -6,8 +7,17 @@ class ItemHomepage {
   final Color color;
 
   final Widget? destination;
+  final bool requiresLogin;
+  final Future<void> Function(BuildContext)? onPressed;
 
-  const ItemHomepage(this.name, this.icon, this.color, {this.destination});
+  const ItemHomepage(
+    this.name,
+    this.icon,
+    this.color, {
+    this.destination,
+    this.requiresLogin = false,
+    this.onPressed,
+  });
 }
 
 class ItemCard extends StatelessWidget {
@@ -22,7 +32,14 @@ class ItemCard extends StatelessWidget {
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        onTap: () {
+        onTap: () async {
+          final action = item.onPressed;
+          if (action != null) {
+            await action(context);
+            return;
+          }
+          if (item.requiresLogin && !await ensureLoggedIn(context)) return;
+          if (!context.mounted) return;
           ScaffoldMessenger.of(context)
             ..hideCurrentSnackBar()
             ..showSnackBar(

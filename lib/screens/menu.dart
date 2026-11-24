@@ -1,6 +1,8 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:myportofolio_mobile/screens/certification_form.dart';
 import 'package:myportofolio_mobile/screens/project_form.dart';
+import 'package:myportofolio_mobile/screens/project_list_screen.dart';
+import 'package:myportofolio_mobile/widgets/auth_guard.dart';
 import 'package:myportofolio_mobile/widgets/left_drawer.dart';
 import 'package:myportofolio_mobile/widgets/project_card.dart';
 
@@ -12,14 +14,20 @@ class MyHomePage extends StatelessWidget {
   final String kelas = 'PBP F';
 
   final List<ItemHomepage> items = const [
-    ItemHomepage('Lihat Proyek', Icons.folder, Color(0xFF1565C0)),
+    ItemHomepage(
+      'Lihat Proyek',
+      Icons.folder,
+      Color(0xFF1565C0),
+      destination: ProjectListScreen(),
+    ),
     ItemHomepage(
       'Tambah Proyek',
       Icons.add_circle,
       Color(0xFF2E7D32),
       destination: ProjectFormPage(),
+      requiresLogin: true,
     ),
-    ItemHomepage('Logout', Icons.logout, Color(0xFFBF360C)),
+    ItemHomepage('Logout', Icons.logout, Color(0xFFBF360C), onPressed: signOut),
     ItemHomepage(
       'Tambah Sertifikasi',
       Icons.workspace_premium,

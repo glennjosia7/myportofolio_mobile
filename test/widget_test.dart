@@ -1,14 +1,97 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:myportofolio_mobile/main.dart';
 import 'package:myportofolio_mobile/screens/certification_form.dart';
+import 'package:myportofolio_mobile/screens/login_screen.dart';
 import 'package:myportofolio_mobile/screens/menu.dart';
 import 'package:myportofolio_mobile/screens/project_form.dart';
+import 'package:myportofolio_mobile/screens/project_list_screen.dart';
+import 'package:myportofolio_mobile/services/api_client.dart';
+import 'package:myportofolio_mobile/services/auth_state.dart';
 import 'package:myportofolio_mobile/widgets/left_drawer.dart';
 import 'package:myportofolio_mobile/widgets/project_card.dart';
+import 'package:provider/provider.dart';
 
-Future<void> _pumpApp(WidgetTester tester) async {
-  await tester.pumpWidget(const MyApp());
+typedef _ProjectPost = ({
+  String method,
+  String path,
+  Map<String, dynamic> body,
+  String? authorization,
+  int status,
+});
+
+Future<List<_ProjectPost>> _pumpApp(
+  WidgetTester tester, {
+  int createStatus = 201,
+  String? returnedTitle,
+}) async {
+  final posts = <_ProjectPost>[];
+  final api = ApiClient(
+    client: MockClient((request) async {
+      if (request.url.path.endsWith('/auth/token/')) {
+        return http.Response('{"token":"test-token"}', 200);
+      }
+      if (request.url.path.endsWith('/auth/logout/')) {
+        return http.Response('', 204);
+      }
+      if (request.method == 'GET') return http.Response('[]', 200);
+      final body = jsonDecode(request.body) as Map<String, dynamic>;
+      posts.add((
+        method: request.method,
+        path: request.url.path,
+        body: body,
+        authorization: request.headers['authorization'],
+        status: createStatus,
+      ));
+      if (createStatus != 201) return http.Response('{}', createStatus);
+      return http.Response(
+        jsonEncode({
+          'id': '30fd83fd-4be5-4492-a4ef-fe2dc096ceaa',
+          ...body,
+          'title': ?returnedTitle,
+        }),
+        createStatus,
+      );
+    }),
+  );
+  addTearDown(api.close);
+  await tester.pumpWidget(MyApp(apiClient: api));
+  await tester.pumpAndSettle();
+  return posts;
+}
+
+void _expectProjectPost(
+  _ProjectPost post,
+  int status, {
+  String name = 'Project Alpha',
+  String description = 'Deskripsi project alpha',
+  String technologies = 'Flutter, Django',
+  String link = 'https://example.com/alpha',
+}) {
+  expect(post.method, 'POST');
+  expect(post.path, '/api/v1/projects/');
+  expect(post.authorization, 'Token test-token');
+  expect(post.status, status);
+  expect(post.body, {
+    'title': name,
+    'description': description,
+    'tech_stack': technologies,
+    'project_url': link,
+    'project_image_url': 'https://example.com/alpha.png',
+  });
+}
+
+Future<void> _completeLogin(WidgetTester tester) async {
+  expect(find.byType(LoginScreen), findsOneWidget);
+  await tester.enterText(find.byType(TextFormField).at(0), 'test-user');
+  await tester.enterText(find.byType(TextFormField).at(1), 'test-password');
+  final submit = find.text('Masuk');
+  await tester.ensureVisible(submit);
+  await tester.tap(submit);
   await tester.pumpAndSettle();
 }
 
@@ -20,6 +103,9 @@ Future<void> _openDrawer(WidgetTester tester) async {
 Future<void> _openFormFromCard(WidgetTester tester) async {
   await tester.tap(find.text('Tambah Proyek'));
   await tester.pumpAndSettle();
+  if (find.byType(LoginScreen).evaluate().isNotEmpty) {
+    await _completeLogin(tester);
+  }
 }
 
 Future<void> _enterFormValues(
@@ -28,6 +114,7 @@ Future<void> _enterFormValues(
   String description = 'Deskripsi project alpha',
   String technologies = 'Flutter, Django',
   String link = 'https://example.com/alpha',
+  String image = 'https://example.com/alpha.png',
 }) async {
   await tester.enterText(find.byKey(const Key('projectNameField')), name);
   await tester.enterText(
@@ -45,12 +132,27 @@ Future<void> _enterFormValues(
   await tester.ensureVisible(find.byKey(const Key('projectLinkField')));
   await tester.pumpAndSettle();
   await tester.enterText(find.byKey(const Key('projectLinkField')), link);
+  final imageField = find.byKey(const Key('projectImageField'));
+  await tester.ensureVisible(imageField);
+  await tester.enterText(imageField, image);
 }
 
 Future<void> _tapSave(WidgetTester tester) async {
-  await tester.ensureVisible(find.byKey(const Key('saveButton')));
+  final navigationMessage = find.ancestor(
+    of: find.text('Kamu telah menekan tombol Tambah Proyek!'),
+    matching: find.byType(SnackBar),
+  );
+  if (navigationMessage.evaluate().isNotEmpty) {
+    await tester.pump(tester.widget<SnackBar>(navigationMessage).duration);
+    await tester.pumpAndSettle();
+    expect(navigationMessage, findsNothing);
+  }
+  final saveButton = find.byKey(const Key('saveButton'));
+  await tester.ensureVisible(saveButton);
   await tester.pumpAndSettle();
-  await tester.tap(find.byKey(const Key('saveButton')));
+  expect(saveButton.hitTestable(), findsOneWidget);
+  expect(tester.widget<FilledButton>(saveButton).onPressed, isNotNull);
+  await tester.tap(saveButton.hitTestable());
   await tester.pumpAndSettle();
 }
 
@@ -122,7 +224,9 @@ void main() {
     }
   });
 
-  testWidgets('tap Lihat Proyek menampilkan SnackBar', (tester) async {
+  testWidgets('Lihat Proyek menampilkan SnackBar dan daftar publik', (
+    tester,
+  ) async {
     await _pumpApp(tester);
 
     await tester.tap(find.text('Lihat Proyek'));
@@ -132,15 +236,20 @@ void main() {
       find.text('Kamu telah menekan tombol Lihat Proyek!'),
       findsOneWidget,
     );
+    await tester.pumpAndSettle();
+    expect(find.byType(ProjectListScreen), findsOneWidget);
+    expect(find.text('Belum ada proyek.'), findsOneWidget);
   });
 
-  testWidgets('tap Tambah Proyek menampilkan SnackBar lalu form', (
+  testWidgets('Tambah Proyek meminta login sebelum membuka form', (
     tester,
   ) async {
     await _pumpApp(tester);
 
     await tester.tap(find.text('Tambah Proyek'));
-    await tester.pump();
+    await tester.pumpAndSettle();
+    expect(find.byType(ProjectFormPage), findsNothing);
+    await _completeLogin(tester);
 
     expect(
       find.text('Kamu telah menekan tombol Tambah Proyek!'),
@@ -157,10 +266,10 @@ void main() {
     await tester.tap(find.text('Logout'));
     await tester.pump();
 
-    expect(find.text('Kamu telah menekan tombol Logout!'), findsOneWidget);
+    expect(find.text('Anda belum masuk.'), findsOneWidget);
   });
 
-  testWidgets('drawer dapat dibuka dan menampilkan tiga menu', (tester) async {
+  testWidgets('drawer menampilkan navigasi dan opsi login', (tester) async {
     await _pumpApp(tester);
     await _openDrawer(tester);
 
@@ -173,6 +282,8 @@ void main() {
     expect(find.text('Home'), findsOneWidget);
     expect(find.text('Add Project'), findsOneWidget);
     expect(find.text('Add Certification'), findsOneWidget);
+    expect(find.text('View Projects'), findsOneWidget);
+    expect(find.text('Login'), findsOneWidget);
   });
 
   testWidgets('drawer Add Project membuka ProjectFormPage', (tester) async {
@@ -181,6 +292,9 @@ void main() {
 
     await tester.tap(find.text('Add Project'));
     await tester.pumpAndSettle();
+    if (find.byType(LoginScreen).evaluate().isNotEmpty) {
+      await _completeLogin(tester);
+    }
 
     expect(find.byType(ProjectFormPage), findsOneWidget);
     expect(find.text('Add Project Form'), findsOneWidget);
@@ -191,6 +305,9 @@ void main() {
     await _openDrawer(tester);
     await tester.tap(find.text('Add Project'));
     await tester.pumpAndSettle();
+    if (find.byType(LoginScreen).evaluate().isNotEmpty) {
+      await _completeLogin(tester);
+    }
 
     await _openDrawer(tester);
     await tester.tap(find.text('Home'));
@@ -276,6 +393,9 @@ void main() {
     await _openDrawer(tester);
     await tester.tap(find.text('Add Project'));
     await tester.pumpAndSettle();
+    if (find.byType(LoginScreen).evaluate().isNotEmpty) {
+      await _completeLogin(tester);
+    }
     expect(find.byType(ProjectFormPage), findsOneWidget);
     expect(
       find.byType(CertificationFormPage, skipOffstage: false),
@@ -306,21 +426,20 @@ void main() {
     expect(find.text('Sertifikasi A'), findsOneWidget);
   });
 
-  testWidgets('lima field form dan kategori default tampil', (tester) async {
+  testWidgets('lima field serializer proyek tampil', (tester) async {
     await _pumpApp(tester);
     await _openFormFromCard(tester);
 
     expect(find.byKey(const Key('projectNameField')), findsOneWidget);
     expect(find.byKey(const Key('descriptionField')), findsOneWidget);
-    expect(find.byKey(const Key('categoryField')), findsOneWidget);
+    expect(find.byKey(const Key('projectImageField')), findsOneWidget);
     expect(find.byKey(const Key('technologiesField')), findsOneWidget);
     expect(find.byKey(const Key('projectLinkField')), findsOneWidget);
     expect(find.byKey(const Key('saveButton')), findsOneWidget);
-    expect(find.text('Web Development'), findsOneWidget);
   });
 
   testWidgets('form kosong ditolak dan tidak membuka dialog', (tester) async {
-    await _pumpApp(tester);
+    final posts = await _pumpApp(tester);
     await _openFormFromCard(tester);
 
     await _tapSave(tester);
@@ -328,10 +447,11 @@ void main() {
     expect(find.text('Nama proyek tidak boleh kosong!'), findsOneWidget);
     expect(find.text('Deskripsi proyek tidak boleh kosong!'), findsOneWidget);
     expect(find.byType(AlertDialog), findsNothing);
+    expect(posts, isEmpty);
   });
 
   testWidgets('input whitespace-only ditolak', (tester) async {
-    await _pumpApp(tester);
+    final posts = await _pumpApp(tester);
     await _openFormFromCard(tester);
 
     await tester.enterText(find.byKey(const Key('projectNameField')), '   ');
@@ -341,39 +461,106 @@ void main() {
     expect(find.text('Nama proyek tidak boleh kosong!'), findsOneWidget);
     expect(find.text('Deskripsi proyek tidak boleh kosong!'), findsOneWidget);
     expect(find.byType(AlertDialog), findsNothing);
+    expect(posts, isEmpty);
   });
 
-  testWidgets('kategori dapat diubah ke Mobile Development', (tester) async {
+  testWidgets('URL gambar invalid ditolak sebelum POST', (tester) async {
+    final posts = await _pumpApp(tester);
+    await _openFormFromCard(tester);
+    await _enterFormValues(tester, image: 'javascript:alert(1)');
+    await _tapSave(tester);
+    expect(
+      find.text('Masukkan URL HTTP atau HTTPS yang valid.'),
+      findsOneWidget,
+    );
+    expect(find.byType(AlertDialog), findsNothing);
+    expect(posts, isEmpty);
+  });
+
+  testWidgets('membatalkan login menahan navigasi terproteksi', (tester) async {
+    await _pumpApp(tester);
+    await tester.tap(find.text('Tambah Proyek'));
+    await tester.pumpAndSettle();
+    expect(find.byType(LoginScreen), findsOneWidget);
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.byType(MyHomePage), findsOneWidget);
+    expect(find.byType(ProjectFormPage), findsNothing);
+  });
+
+  for (final status in [401, 403]) {
+    testWidgets('POST $status mempertahankan isian tanpa dialog sukses', (
+      tester,
+    ) async {
+      final posts = await _pumpApp(tester, createStatus: status);
+      await _openFormFromCard(tester);
+      await _enterFormValues(tester);
+      await _tapSave(tester);
+      _expectProjectPost(posts.single, status);
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(find.text('Project Alpha'), findsOneWidget);
+      expect(
+        find.text(
+          status == 401
+              ? 'Sesi tidak valid. Silakan masuk lagi.'
+              : 'Akun ini tidak memiliki izin untuk tindakan tersebut.',
+        ),
+        findsOneWidget,
+      );
+      final auth = tester
+          .element(find.byType(ProjectFormPage))
+          .read<AuthState>();
+      expect(auth.isLoggedIn, status == 403);
+    });
+  }
+
+  testWidgets('Logout memanggil endpoint dan mengubah menu drawer', (
+    tester,
+  ) async {
     await _pumpApp(tester);
     await _openFormFromCard(tester);
-
-    await tester.tap(find.byKey(const Key('categoryField')));
+    await _openDrawer(tester);
+    await tester.tap(
+      find.descendant(
+        of: find.byType(LeftDrawer),
+        matching: find.text('Logout'),
+      ),
+    );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Mobile Development').last);
-    await tester.pumpAndSettle();
-
-    expect(find.text('Mobile Development'), findsOneWidget);
+    await _openDrawer(tester);
+    expect(
+      find.descendant(
+        of: find.byType(LeftDrawer),
+        matching: find.text('Login'),
+      ),
+      findsOneWidget,
+    );
   });
 
   testWidgets('form valid menampilkan lima nilai di dialog', (tester) async {
-    await _pumpApp(tester);
+    final posts = await _pumpApp(tester, returnedTitle: 'Project Alpha API');
     await _openFormFromCard(tester);
     await _enterFormValues(tester);
     await _tapSave(tester);
 
+    _expectProjectPost(posts.single, 201);
     expect(find.text('Proyek berhasil ditambahkan!'), findsOneWidget);
-    expect(find.text('Nama Proyek: Project Alpha'), findsOneWidget);
+    expect(find.text('Nama Proyek: Project Alpha API'), findsOneWidget);
     expect(find.text('Deskripsi: Deskripsi project alpha'), findsOneWidget);
-    expect(find.text('Kategori: Web Development'), findsOneWidget);
+    expect(
+      find.text('URL Gambar: https://example.com/alpha.png'),
+      findsOneWidget,
+    );
     expect(find.text('Teknologi: Flutter, Django'), findsOneWidget);
     expect(find.text('Tautan: https://example.com/alpha'), findsOneWidget);
   });
 
   testWidgets('OK menutup dialog dan mereset seluruh form', (tester) async {
-    await _pumpApp(tester);
+    final posts = await _pumpApp(tester);
     await _openFormFromCard(tester);
     await _enterFormValues(tester);
     await _tapSave(tester);
+    _expectProjectPost(posts.single, 201);
 
     await tester.tap(find.text('OK'));
     await tester.pumpAndSettle();
@@ -383,20 +570,21 @@ void main() {
     expect(find.text('Deskripsi project alpha'), findsNothing);
     expect(find.text('Flutter, Django'), findsNothing);
     expect(find.text('https://example.com/alpha'), findsNothing);
-    expect(find.text('Web Development'), findsOneWidget);
   });
 
   testWidgets('submit setelah reset tidak memakai data lama', (tester) async {
-    await _pumpApp(tester);
+    final posts = await _pumpApp(tester);
     await _openFormFromCard(tester);
     await _enterFormValues(tester);
     await _tapSave(tester);
+    _expectProjectPost(posts.single, 201);
     await tester.tap(find.text('OK'));
     await tester.pumpAndSettle();
 
     await _tapSave(tester);
     expect(find.byType(AlertDialog), findsNothing);
     expect(find.text('Nama proyek tidak boleh kosong!'), findsOneWidget);
+    expect(posts, hasLength(1));
 
     await _enterFormValues(
       tester,
@@ -407,25 +595,44 @@ void main() {
     );
     await _tapSave(tester);
 
+    expect(posts, hasLength(2));
+    _expectProjectPost(
+      posts.last,
+      201,
+      name: 'Project Beta',
+      description: 'Deskripsi beta',
+      technologies: 'Flutter',
+      link: 'https://example.com/beta',
+    );
     expect(find.text('Nama Proyek: Project Beta'), findsOneWidget);
     expect(find.text('Deskripsi: Deskripsi beta'), findsOneWidget);
     expect(find.text('Project Alpha'), findsNothing);
   });
 
-  testWidgets('tidak ada overflow pada home dan form di 320x640', (
-    tester,
-  ) async {
-    tester.view.physicalSize = const Size(320, 640);
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
+  for (final size in const [
+    Size(320, 640),
+    Size(390, 844),
+    Size(768, 1024),
+    Size(1280, 800),
+  ]) {
+    testWidgets('home dan Save dapat dipakai pada ${size.width.toInt()} px', (
+      tester,
+    ) async {
+      tester.view.physicalSize = size;
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
 
-    await _pumpApp(tester);
-    expect(find.text('Glenn Josia Devano'), findsOneWidget);
-    expect(tester.takeException(), isNull);
+      final posts = await _pumpApp(tester);
+      expect(find.text('Glenn Josia Devano'), findsOneWidget);
+      expect(tester.takeException(), isNull);
 
-    await _openFormFromCard(tester);
-    expect(find.byType(ProjectFormPage), findsOneWidget);
-    expect(tester.takeException(), isNull);
-  });
+      await _openFormFromCard(tester);
+      expect(find.byType(ProjectFormPage), findsOneWidget);
+      await _tapSave(tester);
+      expect(find.text('Nama proyek tidak boleh kosong!'), findsOneWidget);
+      expect(posts, isEmpty);
+      expect(tester.takeException(), isNull);
+    });
+  }
 }
