@@ -345,6 +345,9 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(card.hitTestable());
     await tester.pumpAndSettle();
+    if (find.byType(LoginScreen).evaluate().isNotEmpty) {
+      await _completeLogin(tester);
+    }
 
     expect(find.byType(CertificationFormPage), findsOneWidget);
     expect(find.byType(TextFormField), findsNWidgets(4));
@@ -368,6 +371,9 @@ void main() {
     await _openDrawer(tester);
     await tester.tap(find.text('Add Certification'));
     await tester.pumpAndSettle();
+    if (find.byType(LoginScreen).evaluate().isNotEmpty) {
+      await _completeLogin(tester);
+    }
 
     expect(find.byType(CertificationFormPage), findsOneWidget);
     await _openDrawer(tester);
@@ -420,11 +426,17 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(card.hitTestable());
     await tester.pumpAndSettle();
+    if (find.byType(LoginScreen).evaluate().isNotEmpty) {
+      await _completeLogin(tester);
+    }
     await tester.enterText(find.byType(TextFormField).first, 'Sertifikasi A');
 
     await _openDrawer(tester);
     await tester.tap(find.text('Add Certification'));
     await tester.pumpAndSettle();
+    if (find.byType(LoginScreen).evaluate().isNotEmpty) {
+      await _completeLogin(tester);
+    }
 
     expect(find.byType(CertificationFormPage), findsOneWidget);
     expect(find.text('Sertifikasi A'), findsOneWidget);
