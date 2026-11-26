@@ -173,7 +173,7 @@ class _CertificationFormPageState extends State<CertificationFormPage> {
       decoration: InputDecoration(
         labelText: label,
         border: const OutlineInputBorder(),
-        errorMaxLines: 2,
+        errorMaxLines: 4,
       ),
       keyboardType: isUrl ? TextInputType.url : TextInputType.text,
       textInputAction: isUrl ? TextInputAction.done : TextInputAction.next,
@@ -225,7 +225,7 @@ class _CertificationFormPageState extends State<CertificationFormPage> {
                     border: const OutlineInputBorder(),
                     suffixIcon: const Icon(Icons.calendar_today_outlined),
                     errorText: field.errorText,
-                    errorMaxLines: 2,
+                    errorMaxLines: 4,
                   ),
                   child: Text(
                     date == null
@@ -265,10 +265,11 @@ class _CertificationFormPageState extends State<CertificationFormPage> {
           backgroundColor: colors.primary,
           foregroundColor: colors.onPrimary,
         ),
-        drawer: const LeftDrawer(),
+        drawer: _submitting ? null : const LeftDrawer(),
+        drawerEnableOpenDragGesture: !_submitting,
         body: SafeArea(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
             child: Center(
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 560),

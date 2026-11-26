@@ -17,6 +17,7 @@ class CertificationListScreen extends StatefulWidget {
 
 class _CertificationListScreenState extends State<CertificationListScreen> {
   late Future<List<Certification>> _certifications;
+  bool _navigating = false;
 
   @override
   void initState() {
@@ -37,14 +38,35 @@ class _CertificationListScreenState extends State<CertificationListScreen> {
   }
 
   Future<void> _openCreateForm() async {
-    if (!await ensureLoggedIn(context) || !mounted) return;
-    final created = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(
-        builder: (_) => const CertificationFormPage(fromList: true),
-      ),
-    );
-    if (created == true && mounted) {
-      await _refresh();
+    if (_navigating) return;
+    _navigating = true;
+    try {
+      if (!await ensureLoggedIn(context) || !mounted) return;
+      final created = await Navigator.of(context).push<bool>(
+        MaterialPageRoute(
+          builder: (_) => const CertificationFormPage(fromList: true),
+        ),
+      );
+      if (created == true && mounted) {
+        await _refresh();
+      }
+    } finally {
+      _navigating = false;
+    }
+  }
+
+  Future<void> _openDetail(Certification certification) async {
+    if (_navigating) return;
+    _navigating = true;
+    try {
+      await Navigator.of(context).push<void>(
+        MaterialPageRoute(
+          builder: (_) =>
+              CertificationDetailScreen(certification: certification),
+        ),
+      );
+    } finally {
+      _navigating = false;
     }
   }
 
@@ -53,6 +75,11 @@ class _CertificationListScreenState extends State<CertificationListScreen> {
     appBar: AppBar(
       title: const Text('Daftar Sertifikasi'),
       actions: [
+        IconButton(
+          tooltip: 'Muat ulang',
+          icon: const Icon(Icons.refresh),
+          onPressed: _refresh,
+        ),
         IconButton(
           tooltip: 'Tambah Sertifikasi',
           icon: const Icon(Icons.add),
@@ -108,18 +135,19 @@ class _CertificationListScreenState extends State<CertificationListScreen> {
               return Card(
                 child: ListTile(
                   title: Text(certification.name),
-                  subtitle: Text(
-                    '${certification.issuingOrganization}\n$validity',
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  onTap: () => Navigator.of(context).push<void>(
-                    MaterialPageRoute(
-                      builder: (_) => CertificationDetailScreen(
-                        certification: certification,
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        certification.issuingOrganization,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                    ),
+                      Text(validity),
+                    ],
                   ),
+                  onTap: () => _openDetail(certification),
                 ),
               );
             },

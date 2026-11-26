@@ -22,11 +22,15 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _submitting = true);
     try {
       await auth.login(_username.trim(), _password);
-      if (mounted) Navigator.pop(context, true);
+      if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        Navigator.pop(context, true);
+      }
     } on ApiException catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(error.message)));
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(error.message)));
     } finally {
       if (mounted) setState(() => _submitting = false);
     }

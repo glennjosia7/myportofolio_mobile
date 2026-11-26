@@ -2,9 +2,14 @@
 
 ## Prerequisite Audit (R01)
 
-- **Flutter repo (`myportofolio_mobile`)**: Verified locally on branch `main` at `37b9b7c` (`origin/main` local tracking ref matches `37b9b7c`). Working tree was clean before Checkpoint 1.
-- **Django repo (`myportofolio`)**: Historical baseline `833844e` per `MASTER-CONTEXT` (read-only source inspection confirmed Tutorial 10 auth/CORS files present; sandbox prevented `git -C ../myportofolio` execution).
-- **Unverified remotely in this session**: GitHub Actions workflow run for `37b9b7c`, downloadable `app-release-apk` artifact from Tutorial 10, and SCELE submission timestamps.
+- **Tutorial 10 (`myportofolio_mobile`):** Commit `37b9b7cb2dc1fe278f143fa32432264c279de28d` (`2026-11-24T04:37:38Z` = 11:37 WIB, before 25 Nov 2026 23:59 WIB deadline). GitHub Actions Run `45327694076` -> **PASS** (`success`, artifact `app-release-apk` present).
+- **Tutorial 10 (`myportofolio`):** Commit `833844ea099497260ef03ecfab7f346fa2c36c71`.
+- **Checkpoint 1–3 Remote & CI Evidence:**
+  - CP1 `542490e` -> Run `45744074546` (`success`).
+  - CP2 corrective `1d2475b` -> Run `45761706529` (`success`).
+  - CP3 Flutter `d4ee23d` + corrective `d6bc863` -> Run `45783916874` (`success`, `build / build` + `build_apk` + artifact `app-release-apk`).
+  - CP3 Django `410287ed49cdc5950062e3ca55545d9f36c57ff3` verified on remote `refs/heads/main`.
+- **Unverified externally:** User SCELE portal submission receipt.
 
 ## Authoritative Certification API Contract
 
@@ -36,7 +41,7 @@ Endpoint: `/api/v1/certifications/` (`GET`, `HEAD`, `POST`)
 
 | ID | Mandatory Requirement | Status | Notes |
 |---|---|---|---|
-| R01 | Tutorial 10 prerequisite verified | PARTIAL | Local HEAD `37b9b7c` matches `origin/main`; remote CI & SCELE unverified |
+| R01 | Tutorial 10 prerequisite verified | PASS | SHA `37b9b7c` (24 Nov 11:37 WIB) + Actions Run `45327694076` `success` (`app-release-apk`); SCELE submission user-managed |
 | R02 | Certification JSON model matches actual DRF serializer | PASS | `lib/models/certification.dart` aligned with `CertificationSerializer` |
 | R03 | JsonSerializable snake_case mapping | PASS | `@JsonSerializable(fieldRename: FieldRename.snake)` |
 | R04 | Server-generated ID excluded from POST | PASS | `@JsonKey(includeToJson: false)` on `int? id` |
@@ -68,9 +73,9 @@ Endpoint: `/api/v1/certifications/` (`GET`, `HEAD`, `POST`)
 | R30 | Four reflective answers | NOT STARTED | Checkpoint 5 |
 | R31 | Transparent AI disclosure | NOT STARTED | Checkpoint 5 |
 | R32 | Public GitHub repository and final commit URL | NOT STARTED | Checkpoint 5 |
-| R33 | Meaningful additional automated testing | IN PROGRESS | Django +4 API tests (111 total); Flutter `certification_form_test.dart` integration suite (61 total) |
-| R34 | Format, analyzer, and clean modular code | PARTIAL | Verified for Checkpoint 3 scope |
-| R35 | Five genuine progressive commits | PARTIAL | Checkpoints 1–2 committed (`542490e`, `a44d10c`, `1d2475b`); Checkpoint 3/5 pending manual commit |
+| R33 | Meaningful additional automated testing | PASS | Django 111/111 PASS; Flutter 67/67 PASS (stale token, concurrent logout, pull-to-refresh recovery, 401 cancel, 200% scale, QC regressions) |
+| R34 | Format, analyzer, and clean modular code | PASS | Verified on full repo & clean checkout (`dart format` 0 changes, `flutter analyze` 0 issues) |
+| R35 | Five genuine progressive commits | PARTIAL | Checkpoints 1–3 committed; Checkpoint 4/5 pending manual commit; Checkpoint 5 remaining |
 
 ## Checkpoints
 
@@ -85,12 +90,16 @@ Endpoint: `/api/v1/certifications/` (`GET`, `HEAD`, `POST`)
 - Verification: `dart format --output=none --set-exit-if-changed lib test` PASS (26 files, 0 changed); `flutter analyze --no-pub` PASS (0 issues); focused tests 5/5 PASS; full suite 54/54 PASS; `flutter build web --no-pub --dart-define=API_BASE_URL=http://127.0.0.1:8000` PASS.
 
 ### Checkpoint 3/5 — Authenticated Certification Form & Backend Token Auth Fix
-- Django commit: `PENDING MANUAL COMMIT` (`fix(api): enable token authentication for certifications`)
-  - Files: `main/api_views.py`, `main/tests_api.py` (3 pre-existing `docs/tugas-6/*` deletions preserved outside staging)
-- Flutter commit: `PENDING MANUAL COMMIT` (`feat(certifications): connect protected form to DRF API`)
-  - Files: `lib/screens/certification_form.dart`, `lib/screens/certification_list_screen.dart`, `lib/screens/menu.dart`, `lib/widgets/left_drawer.dart`, `test/certification_form_test.dart`, `test/widget_test.dart`, `docs/tugas-9/PROGRESS.md`
+- Django commit: `410287ed49cdc5950062e3ca55545d9f36c57ff3` (`fix(api): enable token authentication for certifications`)
+- Flutter commits: `d4ee23d443cfe3f0fe9998617cf32ade9a36dc31` (`feat(certifications): connect protected form to DRF API`) and corrective `d6bc863aba71812965b73dd73ca6b3d4ebdf9a45` (`test(certifications): complete protected navigation regression coverage`); CI Run `45783916874` **PASS**.
+
+### Checkpoint 4/5 — Advanced Testing, Independent Mobile QC, Security & Real E2E
+- Commit: `PENDING MANUAL COMMIT` (`fix(certifications): resolve QC defects and strengthen regression coverage`)
+- Files: `lib/screens/certification_detail_screen.dart`, `lib/screens/certification_form.dart`, `lib/screens/certification_list_screen.dart`, `lib/screens/login_screen.dart`, `lib/screens/menu.dart`, `lib/screens/project_form.dart`, `lib/services/auth_state.dart`, `lib/widgets/left_drawer.dart`, `lib/widgets/project_card.dart`, `test/certification_api_test.dart`, `test/certification_form_test.dart`, `test/certification_list_test.dart`, `docs/tugas-9/PROGRESS.md`, `docs/tugas-9/QC_REPORT.md`
+- Independent QC (`mobile-agent-testers` SHA `494a15b` persona framework): 0 P0, 1 P1 (`QC-01`), 9 P2 (`QC-02`–`QC-08`, `QC-10`, `QC-11`), 1 P3 (`QC-09`) — all fixed & retested. Detailed evidence in `docs/tugas-9/QC_REPORT.md`.
 - Verification:
-  - Django: `check` PASS, `migrate --check` PASS, `makemigrations --check --dry-run` PASS, `test main` **111/111 PASS** (27.022s).
-  - Flutter: `dart format --output=none --set-exit-if-changed lib test` PASS (26 files, 0 changed); `flutter analyze --no-pub` PASS (0 issues); focused (`certification_form_test.dart` + `widget_test.dart`) **47/47 PASS**; full suite **61/61 PASS**; `flutter build web --no-pub --dart-define=API_BASE_URL=http://127.0.0.1:8000` PASS.
-  - Live HTTP smoke (`127.0.0.1:8009`, SQLite): anonymous GET `200`, token login `200`, superuser token POST `201`, persisted GET `200` (`True`), revoked token POST `401`, QA fixtures cleaned up.
-- Remaining QC (Checkpoints 4–5): Browser/Playwright end-to-end QA, responsive live browser audit, clean-checkout codegen check, CI badge, README setup/reflections/AI disclosure, final report, and remote GitHub Actions + `app-release-apk` verification.
+  - Django: `check`, `migrate --check`, `makemigrations --check --dry-run` PASS; `manage.py test main` **111/111 PASS** (28.367s).
+  - Flutter: `build_runner build` PASS; `dart format` PASS (26 files, 0 changed); `flutter analyze` PASS (0 issues); `flutter test` **67/67 PASS**; `flutter build web --dart-define=API_BASE_URL=http://127.0.0.1:8000` PASS.
+  - Clean-checkout (`/tmp/pbp-t9-cp4-clean`): `pub get --offline`, `build_runner build`, `analyze`, `test` (67/67), `build web` all **PASS**.
+  - Headless Chrome E2E (`127.0.0.1:8089` -> `127.0.0.1:8009`): `E01`–`E27`, live UI revoked-token `401` + cancel + re-login + explicit retry, `403` member/editor, logout revocation (`401`), Django `/certifications/` render, CORS preflight, 4-viewport responsive sweep (`0` console errors / overflows), QA cleanup (`0` leftover records/users). Android runtime `NOT TESTED`.
+- Remaining (Checkpoint 5): CI badge in `README.md`, setup instructions & backend link, 4 reflective answers, transparent AI disclosure, `docs/tugas-9/FINAL_REPORT.md`, final GitHub Actions + `app-release-apk` verification after Checkpoint 5 push.
