@@ -1,7 +1,9 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:myportofolio_mobile/models/certification.dart';
 import 'package:myportofolio_mobile/screens/certification_detail_screen.dart';
+import 'package:myportofolio_mobile/screens/certification_form.dart';
 import 'package:myportofolio_mobile/services/api_client.dart';
+import 'package:myportofolio_mobile/widgets/auth_guard.dart';
 import 'package:myportofolio_mobile/widgets/left_drawer.dart';
 import 'package:provider/provider.dart';
 
@@ -34,9 +36,30 @@ class _CertificationListScreenState extends State<CertificationListScreen> {
     }
   }
 
+  Future<void> _openCreateForm() async {
+    if (!await ensureLoggedIn(context) || !mounted) return;
+    final created = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => const CertificationFormPage(fromList: true),
+      ),
+    );
+    if (created == true && mounted) {
+      await _refresh();
+    }
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Daftar Sertifikasi')),
+    appBar: AppBar(
+      title: const Text('Daftar Sertifikasi'),
+      actions: [
+        IconButton(
+          tooltip: 'Tambah Sertifikasi',
+          icon: const Icon(Icons.add),
+          onPressed: _openCreateForm,
+        ),
+      ],
+    ),
     drawer: const LeftDrawer(),
     body: FutureBuilder<List<Certification>>(
       future: _certifications,

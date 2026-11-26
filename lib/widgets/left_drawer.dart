@@ -95,7 +95,11 @@ class LeftDrawer extends StatelessWidget {
           ListTile(
             leading: const Icon(Icons.workspace_premium_outlined),
             title: const Text('Add Certification'),
-            onTap: () => _openPage(context, const CertificationFormPage()),
+            onTap: () => _openPage(
+              context,
+              const CertificationFormPage(),
+              requiresLogin: true,
+            ),
           ),
           ListTile(
             leading: Icon(isLoggedIn ? Icons.logout : Icons.login),

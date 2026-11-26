@@ -1,15 +1,119 @@
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:myportofolio_mobile/main.dart';
 import 'package:myportofolio_mobile/screens/certification_form.dart';
+import 'package:myportofolio_mobile/screens/certification_list_screen.dart';
+import 'package:myportofolio_mobile/screens/login_screen.dart';
+import 'package:myportofolio_mobile/screens/menu.dart';
+import 'package:myportofolio_mobile/services/api_client.dart';
+import 'package:myportofolio_mobile/services/auth_state.dart';
+import 'package:provider/provider.dart';
 
-const _summary = 'Ringkasan Sertifikasi';
+const _successTitle = 'Sertifikasi berhasil ditambahkan!';
 const _expirationLabel = 'Tanggal Kedaluwarsa (opsional)';
 
-Future<void> _openForm(WidgetTester tester) async {
-  await tester.pumpWidget(const MyApp());
+typedef _RecordedCertRequest = ({
+  String method,
+  String path,
+  Map<String, String> headers,
+  String body,
+});
+
+class _MockBackend {
+  final List<_RecordedCertRequest> posts = [];
+  final List<_RecordedCertRequest> gets = [];
+  final List<Map<String, dynamic>> serverRows = [];
+  final List<FutureOr<http.Response> Function(Map<String, dynamic>)>
+  postHandlers = [];
+  int loginCount = 0;
+  int _nextId = 1;
+
+  ApiClient buildClient() {
+    return ApiClient(
+      client: MockClient((request) async {
+        final headers = request.headers.map(
+          (k, v) => MapEntry(k.toLowerCase(), v),
+        );
+        if (request.url.path.endsWith('/auth/token/')) {
+          loginCount += 1;
+          return http.Response('{"token":"token-$loginCount"}', 200);
+        }
+        if (request.url.path.endsWith('/auth/logout/')) {
+          return http.Response('', 204);
+        }
+        if (request.method == 'GET' &&
+            request.url.path == '/api/v1/certifications/') {
+          gets.add((
+            method: request.method,
+            path: request.url.path,
+            headers: headers,
+            body: request.body,
+          ));
+          return http.Response(jsonEncode(serverRows), 200);
+        }
+        if (request.method == 'POST' &&
+            request.url.path == '/api/v1/certifications/') {
+          posts.add((
+            method: request.method,
+            path: request.url.path,
+            headers: headers,
+            body: request.body,
+          ));
+          final decoded = jsonDecode(request.body) as Map<String, dynamic>;
+          if (postHandlers.isNotEmpty) {
+            return await postHandlers.removeAt(0)(decoded);
+          }
+          final created = <String, dynamic>{
+            'id': _nextId++,
+            ...decoded,
+            'star_count': 0,
+            'is_starred': false,
+            'starred_by_names': '',
+          };
+          serverRows.add(created);
+          return http.Response(jsonEncode(created), 201);
+        }
+        return http.Response('[]', 200);
+      }),
+    );
+  }
+}
+
+Future<_MockBackend> _pumpApp(
+  WidgetTester tester, {
+  List<FutureOr<http.Response> Function(Map<String, dynamic>)>? postHandlers,
+}) async {
+  final backend = _MockBackend();
+  if (postHandlers != null) {
+    backend.postHandlers.addAll(postHandlers);
+  }
+  final api = backend.buildClient();
+  addTearDown(api.close);
+  await tester.pumpWidget(MyApp(apiClient: api));
   await tester.pumpAndSettle();
+  return backend;
+}
+
+Future<void> _completeLogin(WidgetTester tester) async {
+  expect(find.byType(LoginScreen), findsOneWidget);
+  await tester.enterText(find.byType(TextFormField).at(0), 'qa-user');
+  await tester.enterText(find.byType(TextFormField).at(1), 'qa-password');
+  final submit = find.text('Masuk');
+  await tester.ensureVisible(submit);
+  await tester.tap(submit);
+  await tester.pumpAndSettle();
+}
+
+Future<void> _openForm(WidgetTester tester) async {
   await _tapVisible(tester, find.text('Tambah Sertifikasi'));
+  if (find.byType(LoginScreen).evaluate().isNotEmpty) {
+    await _completeLogin(tester);
+  }
   expect(find.byType(CertificationFormPage), findsOneWidget);
 }
 
@@ -65,13 +169,34 @@ Future<void> _pickDate(WidgetTester tester, String label, DateTime date) async {
   expect(dialog, findsNothing);
 }
 
-Future<void> _save(WidgetTester tester) =>
-    _tapVisible(tester, find.text('Simpan'));
+Future<void> _dismissNavSnackBar(WidgetTester tester) async {
+  final snackBar = find.ancestor(
+    of: find.text('Kamu telah menekan tombol Tambah Sertifikasi!'),
+    matching: find.byType(SnackBar),
+  );
+  if (snackBar.evaluate().isNotEmpty) {
+    await tester.pump(tester.widget<SnackBar>(snackBar).duration);
+    await tester.pumpAndSettle();
+    expect(snackBar, findsNothing);
+  }
+}
+
+Future<void> _save(WidgetTester tester) async {
+  await _dismissNavSnackBar(tester);
+  final button = find.byType(FilledButton);
+  await tester.ensureVisible(button);
+  await tester.pumpAndSettle();
+  expect(button.hitTestable(), findsOneWidget);
+  expect(tester.widget<FilledButton>(button).onPressed, isNotNull);
+  await tester.tap(button.hitTestable());
+  await tester.pumpAndSettle();
+}
 
 void main() {
-  testWidgets('input wajib kosong atau whitespace ditolak per field', (
+  testWidgets('input wajib kosong atau whitespace ditolak tanpa POST', (
     tester,
   ) async {
+    final backend = await _pumpApp(tester);
     await _openForm(tester);
     await _enterText(tester, 'Nama Sertifikasi', '   ');
     await _enterText(tester, 'ID Kredensial', '   ');
@@ -86,12 +211,14 @@ void main() {
     ]) {
       expect(find.text('$field wajib diisi.'), findsOneWidget);
     }
-    expect(find.text(_summary), findsNothing);
+    expect(find.text(_successTitle), findsNothing);
+    expect(backend.posts, isEmpty);
   });
 
-  testWidgets('batas panjang teks dan URL diterapkan per field', (
+  testWidgets('batas panjang teks dan URL diterapkan tanpa POST', (
     tester,
   ) async {
+    final backend = await _pumpApp(tester);
     await _openForm(tester);
     for (final field in [
       'Nama Sertifikasi',
@@ -115,84 +242,361 @@ void main() {
       expect(find.text('$field maksimal 255 karakter.'), findsOneWidget);
     }
     expect(find.text('URL Kredensial maksimal 200 karakter.'), findsOneWidget);
-    expect(find.text(_summary), findsNothing);
+    expect(find.text(_successTitle), findsNothing);
+    expect(backend.posts, isEmpty);
   });
 
-  testWidgets('URL tanpa host, skema lain, dan spasi internal ditolak', (
-    tester,
-  ) async {
-    await _openForm(tester);
-    await _fillText(tester);
-    await _pickDate(tester, 'Tanggal Terbit', DateTime(2026, 11, 20));
+  testWidgets(
+    'URL tanpa host, skema lain, dan spasi internal ditolak tanpa POST',
+    (tester) async {
+      final backend = await _pumpApp(tester);
+      await _openForm(tester);
+      await _fillText(tester);
+      await _pickDate(tester, 'Tanggal Terbit', DateTime(2026, 11, 20));
 
-    for (final url in [
-      'https:///verify',
-      'javascript:alert(1)',
-      'https://example.com/a b',
-    ]) {
-      await _enterText(tester, 'URL Kredensial', url);
+      for (final url in [
+        'https:///verify',
+        'javascript:alert(1)',
+        'https://example.com/a b',
+      ]) {
+        await _enterText(tester, 'URL Kredensial', url);
+        await _save(tester);
+        expect(
+          find.text('Masukkan URL HTTP atau HTTPS yang valid.'),
+          findsOneWidget,
+        );
+        expect(find.text(_successTitle), findsNothing);
+      }
+      expect(backend.posts, isEmpty);
+    },
+  );
+
+  testWidgets(
+    'urutan tanggal diperiksa ulang lalu POST 201 saat tanggal sama',
+    (tester) async {
+      final backend = await _pumpApp(tester);
+      await _openForm(tester);
+      await _fillText(tester);
+      await _pickDate(tester, 'Tanggal Terbit', DateTime(2026, 11, 20));
+      await _pickDate(tester, _expirationLabel, DateTime(2026, 11, 19));
       await _save(tester);
       expect(
-        find.text('Masukkan URL HTTP atau HTTPS yang valid.'),
+        find.text('Tanggal kedaluwarsa tidak boleh sebelum tanggal terbit.'),
         findsOneWidget,
       );
-      expect(find.text(_summary), findsNothing);
-    }
-  });
+      expect(find.text(_successTitle), findsNothing);
+      expect(backend.posts, isEmpty);
 
-  testWidgets('urutan tanggal diperiksa ulang saat tanggal terbit diubah', (
+      await _pickDate(tester, 'Tanggal Terbit', DateTime(2026, 11, 19));
+      await _save(tester);
+      expect(backend.posts, hasLength(1));
+      expect(find.text(_successTitle), findsOneWidget);
+      expect(find.text('Tanggal Terbit: 2026-11-19'), findsOneWidget);
+      expect(find.text('Tanggal Kedaluwarsa: 2026-11-19'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'POST 201 mengirim JSON bertoken tanpa id, tampilkan data server, dan reset form',
+    (tester) async {
+      final backend = await _pumpApp(
+        tester,
+        postHandlers: [
+          (body) => http.Response(
+            jsonEncode({
+              'id': 88,
+              ...body,
+              'name': 'Flutter Associate (Server)',
+            }),
+            201,
+          ),
+        ],
+      );
+      await _openForm(tester);
+      await _fillText(tester);
+      await _pickDate(tester, 'Tanggal Terbit', DateTime(2026, 11, 20));
+      await _pickDate(tester, _expirationLabel, DateTime(2027, 11, 20));
+      await _save(tester);
+
+      expect(backend.posts, hasLength(1));
+      final post = backend.posts.single;
+      expect(post.method, 'POST');
+      expect(post.path, '/api/v1/certifications/');
+      expect(post.headers['authorization'], 'Token token-1');
+      final decoded = jsonDecode(post.body) as Map<String, dynamic>;
+      expect(decoded, isNot(contains('id')));
+      expect(decoded, <String, dynamic>{
+        'name': 'Flutter Associate',
+        'issuing_organization': 'Flutter Academy',
+        'issue_date': '2026-11-20',
+        'expiration_date': '2027-11-20',
+        'credential_id': 'FL-123',
+        'credential_url': 'https://example.com/verify/FL-123',
+      });
+
+      expect(find.byType(AlertDialog), findsOneWidget);
+      expect(find.text(_successTitle), findsOneWidget);
+      for (final line in [
+        'Nama Sertifikasi: Flutter Associate (Server)',
+        'Lembaga Penerbit: Flutter Academy',
+        'ID Kredensial: FL-123',
+        'URL Kredensial: https://example.com/verify/FL-123',
+        'Tanggal Terbit: 2026-11-20',
+        'Tanggal Kedaluwarsa: 2027-11-20',
+      ]) {
+        expect(find.text(line), findsOneWidget);
+      }
+
+      await tester.tap(find.text('Tutup'));
+      await tester.pumpAndSettle();
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(find.byType(CertificationFormPage), findsOneWidget);
+      expect(find.text('  Flutter Associate  '), findsNothing);
+      expect(find.text('Nov 20, 2027'), findsNothing);
+
+      await _save(tester);
+      expect(backend.posts, hasLength(1));
+      expect(find.text('Nama Sertifikasi wajib diisi.'), findsOneWidget);
+    },
+  );
+
+  testWidgets('tanggal kedaluwarsa opsional mengirim null saat dikosongkan', (
     tester,
   ) async {
-    await _openForm(tester);
-    await _fillText(tester);
-    await _pickDate(tester, 'Tanggal Terbit', DateTime(2026, 11, 20));
-    await _pickDate(tester, _expirationLabel, DateTime(2026, 11, 19));
-    await _save(tester);
-    expect(
-      find.text('Tanggal kedaluwarsa tidak boleh sebelum tanggal terbit.'),
-      findsOneWidget,
-    );
-    expect(find.text(_summary), findsNothing);
-
-    await _pickDate(tester, 'Tanggal Terbit', DateTime(2026, 11, 19));
-    await _save(tester);
-    expect(find.text(_summary), findsOneWidget);
-    expect(find.text('Tanggal Terbit: Nov 19, 2026'), findsOneWidget);
-    expect(find.text('Tanggal Kedaluwarsa: Nov 19, 2026'), findsOneWidget);
-  });
-
-  testWidgets('dialog memuat enam nilai dan Tutup mempertahankan isian', (
-    tester,
-  ) async {
+    final backend = await _pumpApp(tester);
     await _openForm(tester);
     await _fillText(tester);
     await _pickDate(tester, 'Tanggal Terbit', DateTime(2026, 11, 20));
     await _pickDate(tester, _expirationLabel, DateTime(2027, 11, 20));
-    await _save(tester);
-
-    expect(find.byType(AlertDialog), findsOneWidget);
-    expect(find.text(_summary), findsOneWidget);
-    for (final line in [
-      'Nama Sertifikasi: Flutter Associate',
-      'Lembaga Penerbit: Flutter Academy',
-      'ID Kredensial: FL-123',
-      'URL Kredensial: https://example.com/verify/FL-123',
-      'Tanggal Terbit: Nov 20, 2026',
-      'Tanggal Kedaluwarsa: Nov 20, 2027',
-    ]) {
-      expect(find.text(line), findsOneWidget);
-    }
-
-    await tester.tap(find.text('Tutup'));
-    await tester.pumpAndSettle();
-    expect(find.byType(AlertDialog), findsNothing);
-    expect(find.byType(CertificationFormPage), findsOneWidget);
-    expect(find.text('  Flutter Associate  '), findsOneWidget);
-    expect(find.text('Nov 20, 2027'), findsOneWidget);
-
     await _tapVisible(tester, find.byTooltip('Hapus tanggal kedaluwarsa'));
     await _save(tester);
+
+    expect(backend.posts, hasLength(1));
+    final decoded =
+        jsonDecode(backend.posts.single.body) as Map<String, dynamic>;
+    expect(decoded['expiration_date'], isNull);
     expect(find.text('Tanggal Kedaluwarsa: Tidak diisi'), findsOneWidget);
+  });
+
+  testWidgets('navigasi terproteksi dan batal login menahan akses form', (
+    tester,
+  ) async {
+    final backend = await _pumpApp(tester);
+
+    await _tapVisible(tester, find.text('Tambah Sertifikasi'));
+    expect(find.byType(LoginScreen), findsOneWidget);
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.byType(MyHomePage), findsOneWidget);
+    expect(find.byType(CertificationFormPage), findsNothing);
+
+    await tester.tap(find.byIcon(Icons.menu));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Add Certification'));
+    await tester.pumpAndSettle();
+    expect(find.byType(LoginScreen), findsOneWidget);
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.byType(MyHomePage), findsOneWidget);
+    expect(find.byType(CertificationFormPage), findsNothing);
+
+    await _tapVisible(tester, find.text('Lihat Sertifikasi'));
+    expect(find.byType(CertificationListScreen), findsOneWidget);
+    await tester.tap(find.byTooltip('Tambah Sertifikasi'));
+    await tester.pumpAndSettle();
+    expect(find.byType(LoginScreen), findsOneWidget);
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.byType(CertificationListScreen), findsOneWidget);
+    expect(find.byType(CertificationFormPage), findsNothing);
+    expect(backend.posts, isEmpty);
+  });
+
+  testWidgets(
+    'POST 201 lalu Lihat Daftar memperbarui daftar sertifikasi dari Home dan List',
+    (tester) async {
+      final backend = await _pumpApp(tester);
+      await _openForm(tester);
+      await _fillText(tester);
+      await _pickDate(tester, 'Tanggal Terbit', DateTime(2026, 11, 20));
+      await _save(tester);
+
+      await tester.tap(find.text('Lihat Daftar'));
+      await tester.pumpAndSettle();
+      expect(find.byType(CertificationListScreen), findsOneWidget);
+      expect(find.text('Flutter Associate'), findsOneWidget);
+      expect(backend.gets, hasLength(1));
+
+      await tester.tap(find.byTooltip('Tambah Sertifikasi'));
+      await tester.pumpAndSettle();
+      expect(find.byType(CertificationFormPage), findsOneWidget);
+      await _enterText(tester, 'Nama Sertifikasi', 'Second Cert');
+      await _enterText(tester, 'Lembaga Penerbit', 'Second Org');
+      await _enterText(tester, 'ID Kredensial', 'SEC-2');
+      await _enterText(
+        tester,
+        'URL Kredensial',
+        'https://example.com/verify/SEC-2',
+      );
+      await _pickDate(tester, 'Tanggal Terbit', DateTime(2026, 11, 21));
+      await _save(tester);
+
+      await tester.tap(find.text('Lihat Daftar'));
+      await tester.pumpAndSettle();
+      expect(find.byType(CertificationListScreen), findsOneWidget);
+      expect(find.text('Flutter Associate'), findsOneWidget);
+      expect(find.text('Second Cert'), findsOneWidget);
+      expect(backend.gets, hasLength(2));
+    },
+  );
+
+  testWidgets(
+    'POST 401 menghapus sesi, meminta login ulang, menjaga isian, dan tidak auto-replay',
+    (tester) async {
+      final backend = await _pumpApp(
+        tester,
+        postHandlers: [(_) => http.Response('{}', 401)],
+      );
+      await _openForm(tester);
+      await _fillText(tester);
+      await _pickDate(tester, 'Tanggal Terbit', DateTime(2026, 11, 20));
+      await _pickDate(tester, _expirationLabel, DateTime(2027, 11, 20));
+      await _save(tester);
+
+      expect(backend.posts, hasLength(1));
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(find.byType(LoginScreen), findsOneWidget);
+      expect(
+        find.text('Sesi tidak valid. Silakan masuk lagi.'),
+        findsOneWidget,
+      );
+
+      final auth = tester.element(find.byType(LoginScreen)).read<AuthState>();
+      expect(auth.isLoggedIn, isFalse);
+      expect(auth.token, isNull);
+
+      await _completeLogin(tester);
+      expect(find.byType(CertificationFormPage), findsOneWidget);
+      expect(auth.isLoggedIn, isTrue);
+      expect(auth.token, 'token-2');
+      // Tidak auto-replay setelah re-login.
+      expect(backend.posts, hasLength(1));
+
+      expect(find.text('  Flutter Associate  '), findsOneWidget);
+      expect(find.text('Flutter Academy'), findsOneWidget);
+      expect(find.text('FL-123'), findsOneWidget);
+      expect(find.text('https://example.com/verify/FL-123'), findsOneWidget);
+      expect(find.text('Nov 20, 2026'), findsOneWidget);
+      expect(find.text('Nov 20, 2027'), findsOneWidget);
+
+      await _save(tester);
+      expect(backend.posts, hasLength(2));
+      expect(backend.posts[1].headers['authorization'], 'Token token-2');
+      expect(find.text(_successTitle), findsOneWidget);
+    },
+  );
+
+  testWidgets('POST 403 menjaga sesi dan isian tanpa login ulang', (
+    tester,
+  ) async {
+    final backend = await _pumpApp(
+      tester,
+      postHandlers: [(_) => http.Response('{}', 403)],
+    );
+    await _openForm(tester);
+    await _fillText(tester);
+    await _pickDate(tester, 'Tanggal Terbit', DateTime(2026, 11, 20));
+    await _save(tester);
+
+    expect(backend.posts, hasLength(1));
+    expect(find.byType(LoginScreen), findsNothing);
+    expect(find.byType(AlertDialog), findsNothing);
+    expect(find.byType(CertificationFormPage), findsOneWidget);
+    expect(
+      find.text('Akun ini tidak memiliki izin untuk tindakan tersebut.'),
+      findsOneWidget,
+    );
+    expect(find.text('  Flutter Associate  '), findsOneWidget);
+
+    final auth = tester
+        .element(find.byType(CertificationFormPage))
+        .read<AuthState>();
+    expect(auth.isLoggedIn, isTrue);
+    expect(auth.token, 'token-1');
+  });
+
+  testWidgets(
+    'POST 400 dan gangguan jaringan menjaga isian serta menampilkan SnackBar',
+    (tester) async {
+      final backend = await _pumpApp(
+        tester,
+        postHandlers: [
+          (_) => http.Response('{"name":["Invalid"]}', 400),
+          (_) => throw http.ClientException('offline'),
+        ],
+      );
+      await _openForm(tester);
+      await _fillText(tester);
+      await _pickDate(tester, 'Tanggal Terbit', DateTime(2026, 11, 20));
+      await _save(tester);
+
+      expect(backend.posts, hasLength(1));
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(
+        find.text('Data ditolak oleh server. Periksa isian Anda.'),
+        findsOneWidget,
+      );
+      expect(find.text('  Flutter Associate  '), findsOneWidget);
+
+      await _save(tester);
+      expect(backend.posts, hasLength(2));
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(find.text('Tidak dapat terhubung ke server.'), findsOneWidget);
+      expect(find.text('  Flutter Associate  '), findsOneWidget);
+    },
+  );
+
+  testWidgets('mencegah pengiriman ganda saat POST masih diproses', (
+    tester,
+  ) async {
+    final pendingPost = Completer<http.Response>();
+    final backend = await _pumpApp(
+      tester,
+      postHandlers: [(_) => pendingPost.future],
+    );
+    await _openForm(tester);
+    await _fillText(tester);
+    await _pickDate(tester, 'Tanggal Terbit', DateTime(2026, 11, 20));
+
+    await _dismissNavSnackBar(tester);
+    final button = find.byType(FilledButton);
+    await tester.ensureVisible(button);
+    await tester.pumpAndSettle();
+    await tester.tap(button.hitTestable());
+    await tester.pump();
+
+    expect(find.text('Menyimpan…'), findsOneWidget);
+    expect(tester.widget<FilledButton>(button).onPressed, isNull);
+    await tester.tap(button.hitTestable());
+    await tester.pump();
+    expect(backend.posts, hasLength(1));
+
+    pendingPost.complete(
+      http.Response(
+        jsonEncode({
+          'id': 55,
+          'name': 'Flutter Associate',
+          'issuing_organization': 'Flutter Academy',
+          'issue_date': '2026-11-20',
+          'expiration_date': null,
+          'credential_id': 'FL-123',
+          'credential_url': 'https://example.com/verify/FL-123',
+        }),
+        201,
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text(_successTitle), findsOneWidget);
   });
 
   for (final size in const [
@@ -208,21 +612,16 @@ void main() {
         tester.view.physicalSize = size;
         addTearDown(tester.view.resetDevicePixelRatio);
         addTearDown(tester.view.resetPhysicalSize);
+        final backend = await _pumpApp(tester);
         await _openForm(tester);
 
         if (size.width == 320) {
-          // Let the navigation SnackBar expire before testing keyboard reachability.
-          final snackBar = find.byType(SnackBar);
-          await tester.pump(tester.widget<SnackBar>(snackBar).duration);
-          await tester.pumpAndSettle();
-          expect(snackBar, findsNothing);
-
+          await _dismissNavSnackBar(tester);
           await _enterText(tester, 'Nama Sertifikasi', 'Flutter Associate');
           tester.view.viewInsets = const FakeViewPadding(bottom: 280);
           addTearDown(tester.view.resetViewInsets);
           await tester.pumpAndSettle();
 
-          // Scroll while the input remains focused and the keyboard inset is active.
           final saveButton = find.text('Simpan').hitTestable();
           await tester.dragUntilVisible(
             saveButton,
@@ -235,6 +634,7 @@ void main() {
           await _save(tester);
         }
         expect(find.text('Tanggal Terbit wajib diisi.'), findsOneWidget);
+        expect(backend.posts, isEmpty);
         expect(tester.takeException(), isNull);
       },
     );

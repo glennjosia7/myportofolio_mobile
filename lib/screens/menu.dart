@@ -34,6 +34,7 @@ class MyHomePage extends StatelessWidget {
       Icons.workspace_premium,
       Color(0xFF6A1B9A),
       destination: CertificationFormPage(),
+      requiresLogin: true,
     ),
     ItemHomepage(
       'Lihat Sertifikasi',
