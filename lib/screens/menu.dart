@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:myportofolio_mobile/screens/certification_form.dart';
+import 'package:myportofolio_mobile/screens/certification_list_screen.dart';
 import 'package:myportofolio_mobile/screens/project_form.dart';
 import 'package:myportofolio_mobile/screens/project_list_screen.dart';
 import 'package:myportofolio_mobile/widgets/auth_guard.dart';
@@ -33,6 +34,12 @@ class MyHomePage extends StatelessWidget {
       Icons.workspace_premium,
       Color(0xFF6A1B9A),
       destination: CertificationFormPage(),
+    ),
+    ItemHomepage(
+      'Lihat Sertifikasi',
+      Icons.card_membership,
+      Color(0xFF00695C),
+      destination: CertificationListScreen(),
     ),
   ];
 

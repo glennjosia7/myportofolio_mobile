@@ -42,17 +42,17 @@ Endpoint: `/api/v1/certifications/` (`GET`, `HEAD`, `POST`)
 | R04 | Server-generated ID excluded from POST | PASS | `@JsonKey(includeToJson: false)` on `int? id` |
 | R05 | Appropriate optional-field defaults | PASS | `String? expirationDate` defaults to `null` |
 | R06 | Generated `*.g.dart` and Git/analyzer exclusions | PASS | `lib/models/certification.g.dart` generated, ignored in `.gitignore` & `analysis_options.yaml` |
-| R07 | Public GET Certifications | NOT STARTED | Checkpoint 2 |
-| R08 | Authenticated POST Certifications | NOT STARTED | Checkpoint 2–3 |
-| R09 | Authorization: Token header | NOT STARTED | Checkpoint 2–3 |
-| R10 | Public Certification List screen | NOT STARTED | Checkpoint 2 |
-| R11 | Future initialized in `initState` | NOT STARTED | Checkpoint 2 |
-| R12 | Loading state | NOT STARTED | Checkpoint 2 |
-| R13 | Error state and Retry | NOT STARTED | Checkpoint 2 |
-| R14 | Empty state | NOT STARTED | Checkpoint 2 |
-| R15 | RefreshIndicator | NOT STARTED | Checkpoint 2 |
-| R16 | Dedicated Detail screen displaying all relevant fields | NOT STARTED | Checkpoint 2 |
-| R17 | Homepage and LeftDrawer integration | NOT STARTED | Checkpoint 2 |
+| R07 | Public GET Certifications | PASS | `ApiClient.getCertifications()` without `Authorization` header |
+| R08 | Authenticated POST Certifications | PARTIAL | `ApiClient.createCertification()` implemented & tested; form wiring in Checkpoint 3 |
+| R09 | Authorization: Token header | PASS | Reuses `ApiClient._request` `Token <key>` header |
+| R10 | Public Certification List screen | PASS | `lib/screens/certification_list_screen.dart` |
+| R11 | Future initialized in `initState` | PASS | `_certifications` assigned in `initState()`, reused across rebuilds |
+| R12 | Loading state | PASS | `CircularProgressIndicator` during initial load |
+| R13 | Error state and Retry | PASS | `ApiException` message + `Coba lagi` button calling `_refresh` |
+| R14 | Empty state | PASS | Scrollable `'Belum ada sertifikasi.'` inside `RefreshIndicator` |
+| R15 | RefreshIndicator | PASS | `RefreshIndicator` with synchronous `setState` assignment + await outside `setState` |
+| R16 | Dedicated Detail screen displaying all relevant fields | PASS | `lib/screens/certification_detail_screen.dart` displays all 6 fields |
+| R17 | Homepage and LeftDrawer integration | PASS | `Lihat Sertifikasi` card on Home + `View Certifications` in `LeftDrawer` |
 | R18 | Existing Assignment 8 Form refactored | NOT STARTED | Checkpoint 3 |
 | R19 | `ensureLoggedIn` route/submission guard | NOT STARTED | Checkpoint 3 |
 | R20 | `AuthState` token used for POST | NOT STARTED | Checkpoint 3 |
@@ -68,13 +68,18 @@ Endpoint: `/api/v1/certifications/` (`GET`, `HEAD`, `POST`)
 | R30 | Four reflective answers | NOT STARTED | Checkpoint 5 |
 | R31 | Transparent AI disclosure | NOT STARTED | Checkpoint 5 |
 | R32 | Public GitHub repository and final commit URL | NOT STARTED | Checkpoint 5 |
-| R33 | Meaningful additional automated testing | IN PROGRESS | `test/certification_model_test.dart` added |
-| R34 | Format, analyzer, and clean modular code | PARTIAL | Verified for Checkpoint 1 scope |
-| R35 | Five genuine progressive commits | PARTIAL | Checkpoint 1/5 pending manual commit |
+| R33 | Meaningful additional automated testing | IN PROGRESS | Added `test/certification_api_test.dart` (2) and `test/certification_list_test.dart` (3) |
+| R34 | Format, analyzer, and clean modular code | PARTIAL | Verified for Checkpoint 2 scope |
+| R35 | Five genuine progressive commits | PARTIAL | Checkpoint 1/5 committed (`542490e`); Checkpoint 2/5 pending manual commit |
 
 ## Checkpoints
 
 ### Checkpoint 1/5 — Foundation & JSON Model
-- Commit: `PENDING MANUAL COMMIT` (`feat(certifications): add DRF-aligned certification model`)
+- Commit: `542490e4da9dc9fe9459d975842ddb268460fc25` (`feat(certifications): add DRF-aligned certification model`)
 - Files: `lib/models/certification.dart`, `test/certification_model_test.dart`, `docs/tugas-9/PROGRESS.md`
 - Verification: `dart run build_runner build` PASS; `dart format --output=none --set-exit-if-changed lib test` PASS; `flutter analyze --no-pub` PASS (0 issues); `test/certification_model_test.dart` 4/4 PASS; full suite 49/49 PASS (45 existing + 4 new).
+
+### Checkpoint 2/5 — API Client & Public Read
+- Commit: `PENDING MANUAL COMMIT` (`feat(certifications): integrate public list and detail screens`)
+- Files: `lib/services/api_client.dart`, `lib/screens/certification_list_screen.dart`, `lib/screens/certification_detail_screen.dart`, `lib/screens/menu.dart`, `lib/widgets/left_drawer.dart`, `test/widget_test.dart`, `test/certification_api_test.dart`, `test/certification_list_test.dart`, `docs/tugas-9/PROGRESS.md`
+- Verification: `dart format --output=none --set-exit-if-changed lib test` PASS (26 files, 0 changed); `flutter analyze --no-pub` PASS (0 issues); focused tests (`certification_api_test.dart` + `certification_list_test.dart`) 5/5 PASS; full suite 54/54 PASS; `flutter build web --no-pub --dart-define=API_BASE_URL=http://127.0.0.1:8000` PASS.

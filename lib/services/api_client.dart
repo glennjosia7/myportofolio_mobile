@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 import 'package:myportofolio_mobile/config.dart';
+import 'package:myportofolio_mobile/models/certification.dart';
 import 'package:myportofolio_mobile/models/project.dart';
 
 class ApiException implements Exception {
@@ -94,6 +95,33 @@ class ApiClient {
     return _decode(
       response,
       (json) => Project.fromJson(json as Map<String, dynamic>),
+    );
+  }
+
+  Future<List<Certification>> getCertifications() async {
+    final response = await _request('GET', 'certifications', expectedCode: 200);
+    return _decode(
+      response,
+      (json) => (json as List<dynamic>)
+          .map((item) => Certification.fromJson(item as Map<String, dynamic>))
+          .toList(),
+    );
+  }
+
+  Future<Certification> createCertification(
+    Certification certification, {
+    required String token,
+  }) async {
+    final response = await _request(
+      'POST',
+      'certifications',
+      expectedCode: 201,
+      token: token,
+      body: certification.toJson(),
+    );
+    return _decode(
+      response,
+      (json) => Certification.fromJson(json as Map<String, dynamic>),
     );
   }
 

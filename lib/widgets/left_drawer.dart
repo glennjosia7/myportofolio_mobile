@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:myportofolio_mobile/screens/certification_form.dart';
+import 'package:myportofolio_mobile/screens/certification_list_screen.dart';
 import 'package:myportofolio_mobile/screens/project_form.dart';
 import 'package:myportofolio_mobile/screens/project_list_screen.dart';
 import 'package:myportofolio_mobile/widgets/auth_guard.dart';
@@ -85,6 +86,11 @@ class LeftDrawer extends StatelessWidget {
               const ProjectFormPage(),
               requiresLogin: true,
             ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.card_membership_outlined),
+            title: const Text('View Certifications'),
+            onTap: () => _openPage(context, const CertificationListScreen()),
           ),
           ListTile(
             leading: const Icon(Icons.workspace_premium_outlined),
