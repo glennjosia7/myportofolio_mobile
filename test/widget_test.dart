@@ -185,32 +185,35 @@ void main() {
     expect(homePage, isA<StatelessWidget>());
   });
 
-  testWidgets('empat menu ItemCard tampil dengan ikon', (tester) async {
+  testWidgets('lima menu ItemCard tampil dengan ikon', (tester) async {
     await _pumpApp(tester);
 
     expect(find.text('Lihat Proyek'), findsOneWidget);
     expect(find.text('Tambah Proyek'), findsOneWidget);
     expect(find.text('Logout'), findsOneWidget);
     expect(find.text('Tambah Sertifikasi'), findsOneWidget);
+    expect(find.text('Lihat Sertifikasi'), findsOneWidget);
     expect(find.byIcon(Icons.folder), findsOneWidget);
     expect(find.byIcon(Icons.add_circle), findsOneWidget);
     expect(find.byIcon(Icons.logout), findsOneWidget);
     expect(find.byIcon(Icons.workspace_premium), findsOneWidget);
+    expect(find.byIcon(Icons.card_membership), findsOneWidget);
   });
 
   testWidgets('setiap ItemCard memakai warna unik dari model', (tester) async {
     await _pumpApp(tester);
 
     final cards = tester.widgetList<ItemCard>(find.byType(ItemCard)).toList();
-    expect(cards, hasLength(4));
+    expect(cards, hasLength(5));
 
     final colors = cards.map((card) => card.item.color).toList();
-    expect(colors.toSet(), hasLength(4));
+    expect(colors.toSet(), hasLength(5));
     expect(colors, const [
       Color(0xFF1565C0),
       Color(0xFF2E7D32),
       Color(0xFFBF360C),
       Color(0xFF6A1B9A),
+      Color(0xFF00695C),
     ]);
 
     for (final card in cards) {
@@ -282,6 +285,7 @@ void main() {
     expect(find.text('Home'), findsOneWidget);
     expect(find.text('Add Project'), findsOneWidget);
     expect(find.text('Add Certification'), findsOneWidget);
+    expect(find.text('View Certifications'), findsOneWidget);
     expect(find.text('View Projects'), findsOneWidget);
     expect(find.text('Login'), findsOneWidget);
   });
