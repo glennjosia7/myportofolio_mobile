@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -5,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:myportofolio_mobile/models/certification.dart';
 import 'package:myportofolio_mobile/services/api_client.dart';
+import 'package:myportofolio_mobile/services/auth_state.dart';
 
 const _certPayload = <String, dynamic>{
   'id': 7,
@@ -158,4 +160,56 @@ void main() {
       }
     },
   );
+
+  test('AuthState.invalidate mengabaikan token usang dan logout paralel hanya kirim satu POST', () async {
+    var loginSeq = 0;
+    var logoutRequests = 0;
+    final logoutGate = Completer<http.Response>();
+    final api = ApiClient(
+      client: MockClient((request) async {
+        if (request.url.path.endsWith('/auth/token/')) {
+          loginSeq += 1;
+          return http.Response('{"token":"tok-$loginSeq"}', 200);
+        }
+        if (request.url.path.endsWith('/auth/logout/')) {
+          logoutRequests += 1;
+          return logoutGate.future;
+        }
+        return http.Response('{}', 404);
+      }),
+    );
+    final auth = AuthState(api);
+    var notifications = 0;
+    auth.addListener(() => notifications += 1);
+    addTearDown(auth.dispose);
+    addTearDown(api.close);
+
+    await auth.login('qa-user', 'qa-pass');
+    expect(auth.token, 'tok-1');
+    expect(notifications, 1);
+
+    auth.invalidate('stale-tok-0');
+    expect(auth.token, 'tok-1');
+    expect(auth.isLoggedIn, isTrue);
+    expect(notifications, 1);
+
+    auth.invalidate('tok-1');
+    expect(auth.token, isNull);
+    expect(auth.isLoggedIn, isFalse);
+    expect(notifications, 2);
+
+    await auth.login('qa-user', 'qa-pass');
+    expect(auth.token, 'tok-2');
+
+    final firstLogout = auth.logout();
+    final secondLogout = auth.logout();
+    await Future<void>.delayed(Duration.zero);
+    expect(logoutRequests, 1);
+    logoutGate.complete(http.Response('', 204));
+    await Future.wait([firstLogout, secondLogout]);
+
+    expect(logoutRequests, 1);
+    expect(auth.token, isNull);
+    expect(auth.isLoggedIn, isFalse);
+  });
 }

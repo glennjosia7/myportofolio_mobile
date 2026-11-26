@@ -7,7 +7,10 @@ import 'package:http/testing.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:myportofolio_mobile/main.dart';
 import 'package:myportofolio_mobile/screens/certification_detail_screen.dart';
+import 'package:myportofolio_mobile/screens/certification_form.dart';
 import 'package:myportofolio_mobile/screens/certification_list_screen.dart';
+import 'package:myportofolio_mobile/screens/login_screen.dart';
+import 'package:myportofolio_mobile/screens/menu.dart';
 import 'package:myportofolio_mobile/services/api_client.dart';
 
 void main() {
@@ -200,6 +203,134 @@ void main() {
       expect(find.byType(CertificationDetailScreen), findsOneWidget);
       expect(find.text('URL Kredensial: $longUrl'), findsOneWidget);
       expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'pull-to-refresh gagal lalu Coba lagi pulih tanpa GET berulang saat rebuild',
+    (tester) async {
+      final requests = <String>[];
+      final api = ApiClient(
+        client: MockClient((request) async {
+          requests.add('${request.method} ${request.url.path}');
+          if (requests.length == 2) {
+            return http.Response('{}', 503);
+          }
+          return http.Response(
+            jsonEncode([
+              {
+                'id': 20,
+                'name': 'Recovered Cert',
+                'issuing_organization': 'Lembaga Sertifikasi Teknologi Informasi Sangat Panjang Sekali Untuk Uji Truncation',
+                'issue_date': '2026-11-20',
+                'expiration_date': '2028-11-20',
+                'credential_id': 'REC-20',
+                'credential_url': 'https://example.com/verify/REC-20',
+              },
+            ]),
+            200,
+          );
+        }),
+      );
+      addTearDown(api.close);
+
+      late VoidCallback rebuildHost;
+      await tester.pumpWidget(
+        StatefulBuilder(
+          builder: (context, setHostState) {
+            rebuildHost = () => setHostState(() {});
+            return MyApp(apiClient: api);
+          },
+        ),
+      );
+      await tester.pumpAndSettle();
+      final card = find.text('Lihat Sertifikasi');
+      await tester.ensureVisible(card);
+      await tester.tap(card.hitTestable());
+      await tester.pumpAndSettle();
+
+      expect(requests, hasLength(1));
+      expect(find.text('Recovered Cert'), findsOneWidget);
+      expect(
+        find.text('Terbit: 2026-11-20 | Berakhir: 2028-11-20'),
+        findsOneWidget,
+      );
+
+      // Rebuild host tree while CertificationListScreen is active: zero extra GET.
+      rebuildHost();
+      await tester.pumpAndSettle();
+      expect(requests, hasLength(1));
+
+      // Trigger failed pull-to-refresh (request #2 -> 503), then recover (#3 -> 200).
+      await tester.drag(find.byType(ListView), const Offset(0, 400));
+      await tester.pumpAndSettle();
+      expect(requests, hasLength(2));
+      expect(find.text('Coba lagi'), findsOneWidget);
+
+      await tester.tap(find.text('Coba lagi'));
+      await tester.pumpAndSettle();
+      expect(requests, hasLength(3));
+      expect(find.text('Recovered Cert'), findsOneWidget);
+      expect(
+        find.text('Terbit: 2026-11-20 | Berakhir: 2028-11-20'),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.byTooltip('Muat ulang'));
+      await tester.pumpAndSettle();
+      expect(requests, hasLength(4));
+    },
+  );
+
+  testWidgets(
+    'LeftDrawer tap cepat dan pindah ke View Certifications dari form menjaga stack tetap rapi',
+    (tester) async {
+      final api = ApiClient(
+        client: MockClient((request) async {
+          if (request.url.path.endsWith('/auth/token/')) {
+            return http.Response('{"token":"drawer-tok"}', 200);
+          }
+          return http.Response('[]', 200);
+        }),
+      );
+      addTearDown(api.close);
+
+      await tester.pumpWidget(MyApp(apiClient: api));
+      await tester.pumpAndSettle();
+
+      // Open drawer on Home and double-tap Home mid-animation: must never pop Home.
+      await tester.tap(find.byIcon(Icons.menu));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Home'));
+      await tester.pump(const Duration(milliseconds: 50));
+      await tester.tap(find.text('Home'));
+      await tester.pumpAndSettle();
+      expect(find.byType(MyHomePage), findsOneWidget);
+
+      // Navigate Home -> CertList -> + -> Login -> CertForm(fromList: true).
+      final listCard = find.text('Lihat Sertifikasi');
+      await tester.ensureVisible(listCard);
+      await tester.tap(listCard.hitTestable());
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Tambah Sertifikasi'));
+      await tester.pumpAndSettle();
+      expect(find.byType(LoginScreen), findsOneWidget);
+      await tester.enterText(find.byType(TextFormField).at(0), 'qa-user');
+      await tester.enterText(find.byType(TextFormField).at(1), 'qa-pass');
+      await tester.tap(find.text('Masuk'));
+      await tester.pumpAndSettle();
+      expect(find.byType(CertificationFormPage), findsOneWidget);
+
+      // From CertForm(fromList: true), drawer View Certifications unwinds stale list.
+      await tester.tap(find.byIcon(Icons.menu));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('View Certifications'));
+      await tester.pumpAndSettle();
+      expect(find.byType(CertificationListScreen), findsOneWidget);
+
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.byType(MyHomePage), findsOneWidget);
     },
   );
 }

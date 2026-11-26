@@ -3,32 +3,51 @@ import 'package:myportofolio_mobile/screens/certification_form.dart';
 import 'package:myportofolio_mobile/screens/certification_list_screen.dart';
 import 'package:myportofolio_mobile/screens/project_form.dart';
 import 'package:myportofolio_mobile/screens/project_list_screen.dart';
-import 'package:myportofolio_mobile/widgets/auth_guard.dart';
 import 'package:myportofolio_mobile/services/auth_state.dart';
+import 'package:myportofolio_mobile/widgets/auth_guard.dart';
 import 'package:provider/provider.dart';
 
-class LeftDrawer extends StatelessWidget {
+class LeftDrawer extends StatefulWidget {
   const LeftDrawer({super.key});
+
+  @override
+  State<LeftDrawer> createState() => _LeftDrawerState();
+}
+
+class _LeftDrawerState extends State<LeftDrawer> {
+  bool _busy = false;
+
+  void _closeDrawer(BuildContext context) {
+    Scaffold.maybeOf(context)?.closeDrawer();
+  }
 
   Future<void> _openPage<T extends Widget>(
     BuildContext context,
     T page, {
     bool requiresLogin = false,
   }) async {
-    final navigator = Navigator.of(context);
-    final fromHome = ModalRoute.of(context)!.isFirst;
-    final alreadyOpen = context.findAncestorWidgetOfExactType<T>() != null;
+    if (_busy) return;
+    _busy = true;
+    try {
+      final navigator = Navigator.of(context);
+      final fromHome = ModalRoute.of(context)!.isFirst;
+      final alreadyOpen = context.findAncestorWidgetOfExactType<T>() != null;
 
-    navigator.pop(); // Tutup drawer sebelum berpindah halaman.
-    if (alreadyOpen) return;
-    if (requiresLogin && !await ensureLoggedIn(navigator.context)) return;
-    if (!navigator.mounted) return;
+      _closeDrawer(context);
+      if (alreadyOpen) return;
+      if (requiresLogin && !await ensureLoggedIn(navigator.context)) return;
+      if (!navigator.mounted) return;
 
-    final route = MaterialPageRoute<void>(builder: (_) => page);
-    if (fromHome) {
-      navigator.push(route);
-    } else {
-      navigator.pushReplacement(route);
+      final route = MaterialPageRoute<void>(builder: (_) => page);
+      if (fromHome) {
+        navigator.push(route);
+      } else {
+        // Unwind stacked subroutes so drawer navigation leaves [Home, Target].
+        navigator.popUntil((r) => r.isFirst);
+        navigator.push(route);
+      }
+    } finally {
+      _busy = false;
     }
   }
 
@@ -68,9 +87,14 @@ class LeftDrawer extends StatelessWidget {
             leading: const Icon(Icons.home_outlined),
             title: const Text('Home'),
             onTap: () {
-              final navigator = Navigator.of(context);
-              navigator.pop();
-              navigator.popUntil((route) => route.isFirst);
+              if (_busy) return;
+              _busy = true;
+              try {
+                _closeDrawer(context);
+                Navigator.of(context).popUntil((route) => route.isFirst);
+              } finally {
+                _busy = false;
+              }
             },
           ),
           ListTile(
@@ -105,13 +129,18 @@ class LeftDrawer extends StatelessWidget {
             leading: Icon(isLoggedIn ? Icons.logout : Icons.login),
             title: Text(isLoggedIn ? 'Logout' : 'Login'),
             onTap: () async {
-              final navigator = Navigator.of(context);
-              final routeContext = navigator.context;
-              Navigator.pop(context);
-              if (isLoggedIn) {
-                await signOut(routeContext);
-              } else {
-                await ensureLoggedIn(routeContext);
+              if (_busy) return;
+              _busy = true;
+              try {
+                final routeContext = Navigator.of(context).context;
+                _closeDrawer(context);
+                if (isLoggedIn) {
+                  await signOut(routeContext);
+                } else {
+                  await ensureLoggedIn(routeContext);
+                }
+              } finally {
+                _busy = false;
               }
             },
           ),

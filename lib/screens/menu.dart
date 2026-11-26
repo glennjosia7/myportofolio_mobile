@@ -88,18 +88,27 @@ class MyHomePage extends StatelessWidget {
                       ),
                     ),
                   ),
-                  GridView.count(
-                    primary: false,
-                    physics: const NeverScrollableScrollPhysics(),
-                    padding: const EdgeInsets.all(20),
-                    crossAxisSpacing: 10,
-                    mainAxisSpacing: 10,
-                    crossAxisCount: 3,
-                    childAspectRatio: 0.8,
-                    shrinkWrap: true,
-                    children: items.map((ItemHomepage item) {
-                      return ItemCard(item);
-                    }).toList(),
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final largeText =
+                          MediaQuery.textScalerOf(context).scale(14) > 20;
+                      final columns = constraints.maxWidth < 360 || largeText
+                          ? 2
+                          : 3;
+                      return GridView.count(
+                        primary: false,
+                        physics: const NeverScrollableScrollPhysics(),
+                        padding: const EdgeInsets.all(20),
+                        crossAxisSpacing: 10,
+                        mainAxisSpacing: 10,
+                        crossAxisCount: columns,
+                        childAspectRatio: columns == 2 ? 1.0 : 0.8,
+                        shrinkWrap: true,
+                        children: items.map((ItemHomepage item) {
+                          return ItemCard(item);
+                        }).toList(),
+                      );
+                    },
                   ),
                 ],
               ),

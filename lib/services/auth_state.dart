@@ -6,6 +6,7 @@ class AuthState extends ChangeNotifier {
 
   final ApiClient _api;
   String? _token;
+  Future<void>? _loggingOut;
   String? get token => _token;
   bool get isLoggedIn => _token != null;
 
@@ -20,13 +21,20 @@ class AuthState extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> logout() async {
+  Future<void> logout() {
+    final pending = _loggingOut;
+    if (pending != null) return pending;
     final token = _token;
-    if (token == null) return;
-    try {
-      await _api.logout(token);
-    } finally {
-      invalidate(token);
-    }
+    if (token == null) return Future.value();
+    final future = () async {
+      try {
+        await _api.logout(token);
+      } finally {
+        invalidate(token);
+        _loggingOut = null;
+      }
+    }();
+    _loggingOut = future;
+    return future;
   }
 }

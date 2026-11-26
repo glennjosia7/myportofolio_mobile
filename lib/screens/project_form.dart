@@ -60,6 +60,7 @@ class _ProjectFormPageState extends State<ProjectFormPage> {
     decoration: InputDecoration(
       labelText: label,
       border: const OutlineInputBorder(),
+      errorMaxLines: 4,
     ),
     validator: validator,
   );
@@ -116,7 +117,8 @@ class _ProjectFormPageState extends State<ProjectFormPage> {
       if (error.statusCode == 401 && token != null) auth.invalidate(token);
       if (mounted) {
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(error.message)));
+          ..hideCurrentSnackBar()
+          ..showSnackBar(SnackBar(content: Text(error.message)));
       }
     } finally {
       if (mounted) setState(() => _submitting = false);
@@ -133,66 +135,71 @@ class _ProjectFormPageState extends State<ProjectFormPage> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
-      title: const Text('Add Project Form'),
-      backgroundColor: Colors.indigo,
-      foregroundColor: Colors.white,
-    ),
-    drawer: const LeftDrawer(),
-    body: SafeArea(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 560),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                spacing: 16,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _field(
-                    id: 'projectNameField',
-                    label: 'Nama Proyek',
-                    controller: _title,
-                    validator: (value) =>
-                        _required(value, 'Nama proyek', limit: 255),
-                  ),
-                  _field(
-                    id: 'descriptionField',
-                    label: 'Deskripsi Proyek',
-                    controller: _description,
-                    maxLines: 5,
-                    validator: (value) => _required(value, 'Deskripsi proyek'),
-                  ),
-                  _field(
-                    id: 'technologiesField',
-                    label: 'Teknologi yang Digunakan',
-                    controller: _stack,
-                    validator: (value) =>
-                        _required(value, 'Teknologi', limit: 255),
-                  ),
-                  _field(
-                    id: 'projectLinkField',
-                    label: 'URL Proyek (opsional)',
-                    controller: _url,
-                    keyboardType: TextInputType.url,
-                    validator: (value) => _validateUrl(value, 200),
-                  ),
-                  _field(
-                    id: 'projectImageField',
-                    label: 'URL Gambar (opsional)',
-                    controller: _imageUrl,
-                    keyboardType: TextInputType.url,
-                    validator: (value) => _validateUrl(value, 500),
-                  ),
-                  FilledButton(
-                    key: const Key('saveButton'),
-                    onPressed: _submitting ? null : _saveForm,
-                    child: Text(_submitting ? 'Memproses…' : 'Save'),
-                  ),
-                ],
+  Widget build(BuildContext context) => PopScope(
+    canPop: !_submitting,
+    child: Scaffold(
+      appBar: AppBar(
+        title: const Text('Add Project Form'),
+        backgroundColor: Colors.indigo,
+        foregroundColor: Colors.white,
+      ),
+      drawer: _submitting ? null : const LeftDrawer(),
+      drawerEnableOpenDragGesture: !_submitting,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 560),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  spacing: 16,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _field(
+                      id: 'projectNameField',
+                      label: 'Nama Proyek',
+                      controller: _title,
+                      validator: (value) =>
+                          _required(value, 'Nama proyek', limit: 255),
+                    ),
+                    _field(
+                      id: 'descriptionField',
+                      label: 'Deskripsi Proyek',
+                      controller: _description,
+                      maxLines: 5,
+                      validator: (value) =>
+                          _required(value, 'Deskripsi proyek'),
+                    ),
+                    _field(
+                      id: 'technologiesField',
+                      label: 'Teknologi yang Digunakan',
+                      controller: _stack,
+                      validator: (value) =>
+                          _required(value, 'Teknologi', limit: 255),
+                    ),
+                    _field(
+                      id: 'projectLinkField',
+                      label: 'URL Proyek (opsional)',
+                      controller: _url,
+                      keyboardType: TextInputType.url,
+                      validator: (value) => _validateUrl(value, 200),
+                    ),
+                    _field(
+                      id: 'projectImageField',
+                      label: 'URL Gambar (opsional)',
+                      controller: _imageUrl,
+                      keyboardType: TextInputType.url,
+                      validator: (value) => _validateUrl(value, 500),
+                    ),
+                    FilledButton(
+                      key: const Key('saveButton'),
+                      onPressed: _submitting ? null : _saveForm,
+                      child: Text(_submitting ? 'Memproses…' : 'Save'),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
