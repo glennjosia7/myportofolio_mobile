@@ -1,5 +1,7 @@
 # myportofolio_mobile
 
+[![CI](https://github.com/glennjosia7/myportofolio_mobile/actions/workflows/main.yaml/badge.svg?branch=main)](https://github.com/glennjosia7/myportofolio_mobile/actions/workflows/main.yaml)
+
 Aplikasi mobile portofolio pribadi untuk Tutorial 08–09 dan Tugas Individu 7–8
 mata kuliah Pemrograman Berbasis Platform (CSGE602022), Fakultas Ilmu
 Komputer, Universitas Indonesia. Proyek Flutter ini terpisah dari backend Django
@@ -453,3 +455,237 @@ repository `API_BASE_URL` dengan URL HTTPS deployment bila APK akan terhubung ke
 backend di luar pengembangan lokal. Setelah push, periksa job `build` dan
 `build_apk` serta unduh artefak `app-release-apk` dari tab Actions.
 Lihat [laporan Tutorial 10](docs/tutorial-10/FINAL_REPORT.md) untuk status verifikasi.
+
+## Assignment 9 — Integrasi Sertifikasi, Autentikasi Token & CI/CD
+
+Assignment 9 menerapkan pola integrasi DRF, autentikasi token, dan CI/CD ke fitur
+**Certifications** tanpa mengubah fungsionalitas **Projects** dan form lokal
+sebelumnya:
+
+- `lib/models/certification.dart` memetakan payload JSON DRF melalui
+  `@JsonSerializable(fieldRename: FieldRename.snake)` dengan `@JsonKey(includeToJson: false)`
+  pada `int? id`, tanggal bertipe `String` (`YYYY-MM-DD`), dan `expirationDate`
+  opsional (`String?`, default `null`).
+- `ApiClient` memperluas `/api/v1/certifications/` lewat `getCertifications()`
+  (GET publik tanpa `Authorization`) dan `createCertification()` (POST bertoken
+  `Authorization: Token <key>`).
+- `CertificationListScreen` menampilkan daftar publik dengan `FutureBuilder`
+  yang diinisialisasi di `initState()`, dukungan `RefreshIndicator`, tombol
+  `Muat ulang`, dan pemulihan error `Coba lagi`, sedangkan `CertificationDetailScreen`
+  menampilkan seluruh 6 field sertifikasi.
+- `CertificationFormPage` menjaga pembukaan dan pengiriman formulir melalui
+  `ensureLoggedIn(context)`, menangani `401 Unauthorized` dengan mencabut sesi
+  lokal dan meminta login ulang tanpa auto-replay, serta menjaga sesi dan isian
+  pada error `403`, `400`, maupun jaringan.
+- Ringkasan progres dan QC tercatat di [progres Tugas 9](docs/tugas-9/PROGRESS.md),
+  [laporan QC CP4](docs/tugas-9/QC_REPORT.md), dan
+  [laporan akhir Tugas 9](docs/tugas-9/FINAL_REPORT.md).
+
+### Instruksi Setup Assignment 9
+
+1. Clone repositori Flutter publik:
+
+   ```bash
+   git clone https://github.com/glennjosia7/myportofolio_mobile.git
+   cd myportofolio_mobile
+   ```
+
+2. Pastikan SDK sesuai versi terverifikasi proyek: **Flutter 3.47.9** (`stable`)
+   dan **Dart 3.13.7** (`pubspec.yaml`: `sdk: ^3.13.7`), serta Python dan Django
+   untuk backend lokal.
+3. Pasang dependensi Flutter:
+
+   ```bash
+   flutter pub get
+   ```
+
+4. Jalankan generator JSON (`project.g.dart` dan `certification.g.dart`):
+
+   ```bash
+   dart run build_runner build
+   ```
+
+   Catatan: `build_runner` `2.17.1` pada lockfile mengabaikan/menghapus flag lama
+   `--delete-conflicting-outputs`. Berkas `*.g.dart` tetap diabaikan oleh
+   `.gitignore` dan `analysis_options.yaml`.
+
+5. Siapkan backend Django dari repositori publik dan commit Assignment 9:
+   - Repositori backend: `https://github.com/glennjosia7/myportofolio`
+   - Commit Assignment 9 backend (`ProjectTokenAuthentication` pada
+     `certification_list` `/api/v1/certifications/`):
+     `https://github.com/glennjosia7/myportofolio/commit/410287ed49cdc5950062e3ca55545d9f36c57ff3`
+   - Status deployment: URL PWS (`https://glenn-josia-myportofolio.pws.cs.ui.ac.id/api/v1/certifications/`)
+     mengembalikan `HTTP 404` karena belum di-redeploy untuk endpoint API
+     Assignment 9. Pengujian end-to-end dijalankan terhadap backend lokal dari
+     commit referensi di atas.
+
+6. Jalankan server Django lokal secara portabel (buat akun uji lokal dengan
+   `manage.py createsuperuser` bila diperlukan, tanpa menyimpan kredensial di repo):
+
+   ```bash
+   git clone https://github.com/glennjosia7/myportofolio.git
+   cd myportofolio
+   python3 -m pip install -r requirements.txt
+   PRODUCTION=False DEBUG=True python manage.py migrate
+   PRODUCTION=False DEBUG=True python manage.py runserver 127.0.0.1:8000
+   ```
+
+7. Jalankan target Flutter Web:
+
+   ```bash
+   flutter run -d chrome --dart-define=API_BASE_URL=http://localhost:8000
+   ```
+
+8. Jalankan pada emulator Android:
+   Default `lib/config.dart` memakai `http://10.0.2.2:8000`, namun `ALLOWED_HOSTS`
+   bawaan `portofolio/settings.py` backend hanya mencantumkan host PWS,
+   `localhost`, dan `127.0.0.1` (sehingga host `10.0.2.2` ditolak `400 Bad Request`).
+   Agar terhubung ke backend lokal tanpa memodifikasi pengaturan Django, gunakan
+   penerusan port `adb reverse`:
+
+   ```bash
+   adb reverse tcp:8000 tcp:8000
+   flutter run -d <device-id> --dart-define=API_BASE_URL=http://127.0.0.1:8000
+   ```
+
+   Cleartext HTTP Android hanya diaktifkan pada manifest debug; build release
+   wajib menggunakan URL backend HTTPS.
+
+9. Konfigurasi `API_BASE_URL`:
+   Suntikkan alamat backend saat build atau run melalui
+   `--dart-define=API_BASE_URL=<url-backend>`, atau atur variabel repositori
+   GitHub Actions `API_BASE_URL` sebelum membangun APK release CI untuk backend HTTPS.
+10. Jalankan pemeriksaan format, analisis statis, dan pengujian otomatis:
+
+    ```bash
+    dart format --output=none --set-exit-if-changed lib test
+    flutter analyze
+    flutter test
+    ```
+
+11. Bangun APK release secara lokal atau unduh artefak CI:
+
+    ```bash
+    flutter build apk --release --dart-define=API_BASE_URL=https://<backend-https-anda>
+    ```
+
+    Hasil lokal tersimpan di `build/app/outputs/flutter-apk/app-release.apk`, dan
+    workflow GitHub Actions `.github/workflows/main.yaml` mengunggah artefak
+    `app-release-apk` dari job `build_apk`.
+
+### Assignment 9
+
+1. Anotasi `@JsonSerializable(fieldRename: FieldRename.snake)` dan `@JsonKey(includeToJson: false)`
+   pada `Certification` (`lib/models/certification.dart`) memberi contract JSON
+   yang bertipe kuat antara Dart dan `CertificationSerializer` di Django DRF:
+   properti camelCase Dart (`issuingOrganization`, `issueDate`, `expirationDate`,
+   `credentialId`, `credentialUrl`) otomatis dipetakan ke key `snake_case` DRF,
+   field `int? id` tetap dapat dibaca dari respons server (`BigAutoField`) namun
+   dikecualikan saat `toJson()` untuk `POST`, tanggal terbit disimpan dalam format
+   date-only `YYYY-MM-DD`, serta `expirationDate` bertipe nullable `String?` dengan
+   default `null` dan metadata baca tambahan (`star_count`, `is_starred`,
+   `starred_by_names`) diabaikan dengan aman oleh kode hasil `certification.g.dart`.
+   Jika widget langsung menyusun `Map<String, dynamic>` mentah, satu typo kecil
+   seperti mengirim `'issuingOrganization'` alih-alih `'issuing_organization'`,
+   menyertakan `'id': null`, atau mengirim string tanggal berformat lokal UI akan
+   memicu kegagalan validasi `400 Bad Request` pada DRF maupun menyebabkan field
+   opsional kedaluwarsa tidak tersimpan konsisten. Pembangkitan `toJson()`
+   mencegah kelas bug penyimpangan kontrak payload tersebut sebelum kompilasi.
+
+2. Memanggil sumber data di dalam `build()` berisiko besar karena `build()`
+   dipanggil ulang setiap kali ada perubahan state UI, kemunculan papan ketik,
+   atau pembaruan `MediaQuery`/`InheritedWidget`. Bila `getCertifications()`
+   dijalankan langsung di `build()`, setiap rebuild akan mengirim permintaan HTTP
+   `GET` berulang ke Django dan menciptakan `Future` baru yang memaksa
+   `FutureBuilder` mengulang status loading. Pada `CertificationListScreen`,
+   `_certifications` diinisialisasi satu kali di `initState()` dan baru diperbarui
+   secara eksplisit pada `_refresh()` (dipanggil oleh `RefreshIndicator`, tombol
+   app bar `Muat ulang`, dan tombol `Coba lagi`) melalui assignment sinkron di
+   dalam `setState()` dengan `await` di luar `setState()`. Sementara itu,
+   `ApiClient` melempar `ApiException(message, statusCode: response.statusCode)`
+   pada respons non-2xx atau kegagalan jaringan daripada mengembalikan `null`,
+   supaya UI dapat membedakan daftar yang sah-sah saja kosong (`200 []` -> pesan
+   `'Belum ada sertifikasi.'`) dari kegagalan jaringan/server (menampilkan pesan
+   `ApiException` dan aksi `Coba lagi`). Di `CertificationFormPage`, adanya
+   `statusCode` juga memungkinkan percabangan spesifik: `401` memanggil
+   `auth.invalidate(token)` lalu meminta login ulang, sedangkan `403`, `400`, dan
+   error jaringan menjaga sesi serta isian form sambil menampilkan `SnackBar`.
+
+3. `SessionAuthentication` Django memanfaatkan cookie sesi berbasis browser dan
+   wajib memvalidasi token CSRF pada permintaan tulis browser, sedangkan
+   `TokenAuthentication` DRF (pada `ProjectTokenAuthentication` yang mewarisi
+   `TokenAuthentication`) mengautentikasi setiap permintaan secara stateless
+   melalui header `Authorization: Token <key>` tanpa bergantung pada cookie atau
+   CSRF sehingga lebih portabel untuk klien Flutter Web maupun Android native. Pada
+   `myportofolio_mobile`, `AuthState` menyimpan token di memori selama sesi
+   berlangsung, mencabut token di backend melalui `POST /api/v1/auth/logout/`
+   (`204 No Content`), dan saat menerima HTTP `401` langsung membersihkan token
+   lokal lewat `auth.invalidate(token)` serta meminta login ulang tanpa auto-replay
+   `POST`. Di backend (`main/api_views.py` commit `410287e`), decorator
+   `@authentication_classes([ProjectTokenAuthentication, SessionAuthentication])`
+   mempertahankan kedua skema secara berdampingan agar klien browser situs web
+   Django beserta proteksi CSRF-nya tetap kompatibel, sementara klien mobile dapat
+   mengirimkan token. Kebijakan otorisasi `IsPortfolioOwnerOrEditorOrReadOnly`
+   tetap terpisah dari autentikasi: token dicabut/tidak sah ditolak pada tahap
+   autentikasi dengan `401 Unauthorized`, sedangkan akun terautentikasi yang bukan
+   `is_superuser` (termasuk user biasa dan grup `Editor` yang hanya memiliki izin
+   `PUT`/`PATCH` detail) tetap mendapat `403 Forbidden` saat mencoba `POST`.
+
+4. Pada `.github/workflows/main.yaml`, job `build` memakai reusable workflow
+   `VeryGoodOpenSource/very_good_workflows/.github/workflows/flutter_package.yml@v2`
+   (dipicu oleh `push` ke `main` dan `pull_request`, menggunakan Flutter `3.47.9`,
+   `setup: dart run build_runner build`, `coverage_excludes: '**/*.g.dart'`, dan
+   `min_coverage: 0`). Pemeriksaan aktual yang dijalankan oleh reusable workflow
+   pada run CI kami mencakup checkout repositori, setup Flutter, instalasi
+   dependensi (`flutter pub get`), eksekusi setup generator (`dart run build_runner build`),
+   pemeriksaan format, `flutter analyze`, resolusi `dart define`, dan eksekusi
+   `flutter test` (langkah Bloc Lint, Cognitive Complexity, dan Upload Artifacts
+   dilewati sesuai konfigurasi). Job `build_apk` memakai `needs: build` sehingga
+   baru berjalan bila seluruh pemeriksaan kualitas `build` lulus; ia membangun ulang
+   file `*.g.dart`, menjalankan `flutter build apk --release` (dengan
+   `--dart-define="API_BASE_URL=$API_BASE_URL"` jika variabel repositori diatur),
+   dan mengunggah `build/app/outputs/flutter-apk/app-release.apk` sebagai artefak
+   `app-release-apk`. Berkas `*.g.dart` dikecualikan lewat `.gitignore` (serta
+   `analysis_options.yaml`) karena merupakan artefak deterministik turunan
+   anotasi `@JsonSerializable`: mengabaikannya menjaga diff Git tetap bersih,
+   menghindari konflik merge, dan memastikan setiap lingkungan CI maupun pengembang
+   meregenerasi serializer terbaru langsung dari definisi model.
+
+#### Penggunaan AI Assignment 9
+
+Pengerjaan Assignment 9 dilakukan secara bertahap dalam 5 checkpoint menggunakan
+alat berikut secara transparan:
+
+- **Alat yang digunakan:** **ChatGPT Website** untuk interpretasi checklist PDF,
+  perancangan strategi 5 checkpoint, penyusunan megaprompt, dan pemecahan kendala
+  Git; **Antigravity** (orkestrasi dan perencanaan pada **Gemini 4 Neon XHigh**,
+  bantuan eksekusi pada **Gemini 4 Hydrogen XHigh**) untuk analisis repo, audit
+  kontrak Django-Flutter, implementasi, pengujian otomatis, QC independen, dan
+  penyusunan dokumentasi.
+- **Strategi prompting dan verifikasi:** Memecah pekerjaan menjadi CP1 (model JSON),
+  CP2 (API client & baca publik), CP3 (form terautentikasi & perbaikan
+  `ProjectTokenAuthentication` backend), CP4 (pengujian lanjutan, QC subagent,
+  adaptasi persona `mobile-agent-testers` SHA `494a15b`, E2E headless Chrome CDP
+  27 skenario, dan audit CORS), serta CP5 (quality gate akhir, build APK lokal,
+  smoke emulator Android headless `adb reverse`, README, dan laporan final).
+- **Keterbatasan AI dan koreksi manual mahasiswa:**
+  - Tiga perintah `git add` multi-baris yang dihasilkan AI pada CP2–CP4 tidak
+    memiliki karakter sambung baris (`\`), sehingga beberapa berkas test maupun
+    perbaikan sempat tertinggal pada commit awal dan harus dilengkapi mahasiswa
+    melalui commit korektif (`1d2475b`, `d6bc863`, `2783432`) sebelum riwayat
+    CP5 diserahkan.
+  - Repositori `mobile-agent-testers` tidak dijalankan dengan `setup.sh` / runner
+    GitHub Actions asli karena memerlukan kredensial Claude Code dan tidak dapat
+    mengakses server Django lokal (`127.0.0.1`); hanya taksonomi persona berlisensi
+    MIT yang diadaptasi ke subagent riset dan otomasi Chrome CDP lokal.
+  - Pada E2E headless Chrome, pembacaan nilai DOM `.value` dari input Flutter Web
+    yang tidak sedang fokus mengembalikan string kosong; keterbatasan skrip E2E
+    tersebut dikompensasi oleh bukti pengiriman ulang langsung (`E22`) tanpa
+    mengetik ulang setelah `401` dan assertion eksplisit pada 6 field di widget test.
+  - Pada uji emulator Android, alamat default `10.0.2.2` ditolak `400 Bad Request`
+    oleh `ALLOWED_HOSTS` Django sehingga diverifikasi melalui `adb reverse tcp:8000 tcp:8000`
+    dengan `127.0.0.1:8000` tanpa memodifikasi konfigurasi keamanan backend.
+  - Seluruh keputusan akhir, eksekusi Git, dan pengumpulan ke SCELE dilakukan
+    secara manual oleh mahasiswa; tidak ada klaim bahwa seluruh kode ditulis
+    manual, tidak ada tautan percakapan AI yang dibuat-buat, dan tidak ada
+    kredensial yang disimpan ke repositori.
