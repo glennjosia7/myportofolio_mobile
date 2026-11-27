@@ -12,6 +12,7 @@ import 'package:myportofolio_mobile/screens/project_form.dart';
 import 'package:myportofolio_mobile/screens/project_list_screen.dart';
 import 'package:myportofolio_mobile/services/api_client.dart';
 import 'package:myportofolio_mobile/services/auth_state.dart';
+import 'package:myportofolio_mobile/theme/app_tokens.dart';
 import 'package:myportofolio_mobile/widgets/left_drawer.dart';
 import 'package:myportofolio_mobile/widgets/project_card.dart';
 import 'package:provider/provider.dart';
@@ -200,7 +201,9 @@ void main() {
     expect(find.byIcon(Icons.card_membership), findsOneWidget);
   });
 
-  testWidgets('setiap ItemCard memakai warna unik dari model', (tester) async {
+  testWidgets('setiap ItemCard memakai warna semantik website dari model', (
+    tester,
+  ) async {
     await _pumpApp(tester);
 
     final cards = tester.widgetList<ItemCard>(find.byType(ItemCard)).toList();
@@ -209,11 +212,11 @@ void main() {
     final colors = cards.map((card) => card.item.color).toList();
     expect(colors.toSet(), hasLength(5));
     expect(colors, const [
-      Color(0xFF1565C0),
-      Color(0xFF2E7D32),
-      Color(0xFFBF360C),
-      Color(0xFF6A1B9A),
-      Color(0xFF00695C),
+      AppColors.accent,
+      AppColors.accentPressed,
+      AppColors.danger,
+      AppColors.accentSlate,
+      AppColors.surfaceElevated,
     ]);
 
     for (final card in cards) {
@@ -223,9 +226,202 @@ void main() {
           matching: find.byType(Material),
         ),
       );
-      expect(material.color, card.item.color);
+      expect(material.color, AppColors.surface);
+      final badge = tester.widget<DecoratedBox>(
+        find.descendant(
+          of: find.byWidget(card),
+          matching: find.byType(DecoratedBox),
+        ),
+      );
+      expect((badge.decoration as BoxDecoration).color, card.item.color);
     }
   });
+
+  testWidgets(
+    'tema dark Navy-Teal, AppBar, drawer aktif, dan scale 200% aman di 320px',
+    (tester) async {
+      tester.view.physicalSize = const Size(320, 640);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final api = ApiClient(
+        client: MockClient((_) async => http.Response('[]', 200)),
+      );
+      addTearDown(api.close);
+      await tester.pumpWidget(
+        MediaQuery(
+          data: const MediaQueryData(textScaler: TextScaler.linear(2.0)),
+          child: MyApp(apiClient: api),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final theme = Theme.of(tester.element(find.byType(MyHomePage)));
+      expect(theme.brightness, Brightness.dark);
+      expect(theme.scaffoldBackgroundColor, AppColors.paper);
+      expect(theme.colorScheme.primary, AppColors.accent);
+      expect(theme.colorScheme.surface, AppColors.surface);
+      expect(tester.takeException(), isNull);
+
+      await _openDrawer(tester);
+      final homeTile = tester.widget<ListTile>(
+        find.ancestor(of: find.text('Home'), matching: find.byType(ListTile)),
+      );
+      expect(homeTile.selected, isTrue);
+      expect(find.text('Guest Mode'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'LoginScreen mendukung toggle password dan aman pada 320px skala 200%',
+    (tester) async {
+      tester.view.physicalSize = const Size(320, 640);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final api = ApiClient(
+        client: MockClient((_) async => http.Response('[]', 200)),
+      );
+      addTearDown(api.close);
+
+      await tester.pumpWidget(
+        MediaQuery(
+          data: const MediaQueryData(textScaler: TextScaler.linear(2.0)),
+          child: MyApp(apiClient: api),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await _openDrawer(tester);
+      final drawerList = find.descendant(
+        of: find.byType(LeftDrawer),
+        matching: find.byType(ListView),
+      );
+      final loginTile = find.descendant(
+        of: find.byType(LeftDrawer),
+        matching: find.text('Login'),
+      );
+      await tester.dragUntilVisible(
+        loginTile,
+        drawerList,
+        const Offset(0, -120),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(loginTile.hitTestable());
+      await tester.pumpAndSettle();
+
+      expect(find.byType(LoginScreen), findsOneWidget);
+      expect(tester.takeException(), isNull);
+
+      Finder passwordEditable() => find.descendant(
+        of: find.byType(TextFormField).at(1),
+        matching: find.byType(EditableText),
+      );
+      expect(
+        tester.widget<EditableText>(passwordEditable()).obscureText,
+        isTrue,
+      );
+
+      final showToggle = find.byTooltip('Tampilkan password');
+      await tester.ensureVisible(showToggle);
+      await tester.pumpAndSettle();
+      await tester.tap(showToggle.hitTestable());
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<EditableText>(passwordEditable()).obscureText,
+        isFalse,
+      );
+
+      final hideToggle = find.byTooltip('Sembunyikan password');
+      await tester.tap(hideToggle.hitTestable());
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<EditableText>(passwordEditable()).obscureText,
+        isTrue,
+      );
+    },
+  );
+
+  testWidgets(
+    'aksesibilitas CP4: touch target 48dp, grid 1 kolom di 320px 200%, dan floatingLabel error',
+    (tester) async {
+      tester.view.physicalSize = const Size(320, 640);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final api = ApiClient(
+        client: MockClient((_) async => http.Response('[]', 200)),
+      );
+      addTearDown(api.close);
+
+      await tester.pumpWidget(
+        MediaQuery(
+          data: const MediaQueryData(textScaler: TextScaler.linear(2.0)),
+          child: MyApp(apiClient: api),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final grid = tester.widget<GridView>(find.byType(GridView));
+      final delegate =
+          grid.gridDelegate as SliverGridDelegateWithFixedCrossAxisCount;
+      expect(delegate.crossAxisCount, 1);
+      expect(tester.takeException(), isNull);
+
+      final theme = Theme.of(tester.element(find.byType(MyHomePage)));
+      expect(theme.visualDensity, VisualDensity.standard);
+      final textBtnMin = theme.textButtonTheme.style?.minimumSize?.resolve({});
+      expect(textBtnMin?.height, greaterThanOrEqualTo(48));
+
+      final floating =
+          theme.inputDecorationTheme.floatingLabelStyle!
+              as WidgetStateTextStyle;
+      expect(floating.resolve({WidgetState.error}).color, AppColors.errorText);
+      expect(floating.resolve({WidgetState.focused}).color, AppColors.accent);
+      expect(floating.resolve({}).color, AppColors.muted);
+
+      await _openDrawer(tester);
+      final drawerList = find.descendant(
+        of: find.byType(LeftDrawer),
+        matching: find.byType(ListView),
+      );
+      for (final title in ['Home', 'View Projects', 'View Certifications']) {
+        final tile = find.ancestor(
+          of: find.text(title),
+          matching: find.byType(ListTile),
+        );
+        await tester.dragUntilVisible(tile, drawerList, const Offset(0, -80));
+        await tester.pumpAndSettle();
+        final tileBox = tester.renderObject<RenderBox>(tile);
+        expect(tileBox.size.height, greaterThanOrEqualTo(48));
+      }
+
+      final loginTile = find.descendant(
+        of: find.byType(LeftDrawer),
+        matching: find.text('Login'),
+      );
+      await tester.dragUntilVisible(
+        loginTile,
+        drawerList,
+        const Offset(0, -120),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(loginTile.hitTestable());
+      await tester.pumpAndSettle();
+
+      final masukBox = tester.renderObject<RenderBox>(
+        find.ancestor(
+          of: find.text('Masuk'),
+          matching: find.byType(ElevatedButton),
+        ),
+      );
+      expect(masukBox.size.height, greaterThanOrEqualTo(48));
+    },
+  );
 
   testWidgets('Lihat Proyek menampilkan SnackBar dan daftar publik', (
     tester,

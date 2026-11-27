@@ -3,6 +3,7 @@ import 'package:myportofolio_mobile/models/certification.dart';
 import 'package:myportofolio_mobile/screens/certification_list_screen.dart';
 import 'package:myportofolio_mobile/services/api_client.dart';
 import 'package:myportofolio_mobile/services/auth_state.dart';
+import 'package:myportofolio_mobile/theme/app_tokens.dart';
 import 'package:myportofolio_mobile/widgets/auth_guard.dart';
 import 'package:myportofolio_mobile/widgets/left_drawer.dart';
 import 'package:provider/provider.dart';
@@ -104,7 +105,13 @@ class _CertificationFormPageState extends State<CertificationFormPage> {
       final openList = await showDialog<bool>(
         context: context,
         builder: (dialogContext) => AlertDialog(
-          title: const Text('Sertifikasi berhasil ditambahkan!'),
+          title: const Row(
+            spacing: AppSpacing.sm,
+            children: [
+              Icon(Icons.check_circle_outline, color: AppColors.success),
+              Expanded(child: Text('Sertifikasi berhasil ditambahkan!')),
+            ],
+          ),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -170,11 +177,7 @@ class _CertificationFormPageState extends State<CertificationFormPage> {
     return TextFormField(
       controller: controller,
       enabled: !_submitting,
-      decoration: InputDecoration(
-        labelText: label,
-        border: const OutlineInputBorder(),
-        errorMaxLines: 4,
-      ),
+      decoration: InputDecoration(labelText: label, errorMaxLines: 4),
       keyboardType: isUrl ? TextInputType.url : TextInputType.text,
       textInputAction: isUrl ? TextInputAction.done : TextInputAction.next,
       validator: (value) {
@@ -203,6 +206,7 @@ class _CertificationFormPageState extends State<CertificationFormPage> {
     required FormFieldValidator<DateTime> validator,
     bool optional = false,
   }) {
+    final textTheme = Theme.of(context).textTheme;
     return FormField<DateTime>(
       key: key,
       validator: validator,
@@ -215,15 +219,21 @@ class _CertificationFormPageState extends State<CertificationFormPage> {
                 onPressed: _submitting ? null : () => _pickDate(field, label),
                 style: OutlinedButton.styleFrom(
                   padding: EdgeInsets.zero,
-                  shape: const RoundedRectangleBorder(),
+                  alignment: Alignment.centerLeft,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppRadius.md),
+                  ),
                   side: BorderSide.none,
                 ),
                 child: InputDecorator(
                   decoration: InputDecoration(
+                    enabled: !_submitting,
                     labelText: label,
                     floatingLabelBehavior: FloatingLabelBehavior.always,
-                    border: const OutlineInputBorder(),
-                    suffixIcon: const Icon(Icons.calendar_today_outlined),
+                    suffixIcon: Icon(
+                      Icons.calendar_today_outlined,
+                      color: _submitting ? AppColors.muted : AppColors.accent,
+                    ),
                     errorText: field.errorText,
                     errorMaxLines: 4,
                   ),
@@ -232,6 +242,9 @@ class _CertificationFormPageState extends State<CertificationFormPage> {
                         ? 'Pilih tanggal'
                         : MaterialLocalizations.of(context)
                               .formatShortDate(date),
+                    style: textTheme.bodyLarge?.copyWith(
+                      color: date == null ? AppColors.muted : AppColors.ink,
+                    ),
                   ),
                 ),
               ),
@@ -239,7 +252,7 @@ class _CertificationFormPageState extends State<CertificationFormPage> {
             if (optional && date != null)
               IconButton(
                 tooltip: 'Hapus tanggal kedaluwarsa',
-                icon: const Icon(Icons.clear),
+                icon: const Icon(Icons.clear, color: AppColors.muted),
                 onPressed: _submitting ? null : () => field.didChange(null),
               ),
           ],
@@ -250,8 +263,7 @@ class _CertificationFormPageState extends State<CertificationFormPage> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-
+    final textTheme = Theme.of(context).textTheme;
     return PopScope(
       canPop: !_submitting && !_createdAny,
       onPopInvokedWithResult: (didPop, _) {
@@ -260,26 +272,55 @@ class _CertificationFormPageState extends State<CertificationFormPage> {
         }
       },
       child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Tambah Sertifikasi'),
-          backgroundColor: colors.primary,
-          foregroundColor: colors.onPrimary,
-        ),
+        appBar: AppBar(title: const Text('Tambah Sertifikasi')),
         drawer: _submitting ? null : const LeftDrawer(),
         drawerEnableOpenDragGesture: !_submitting,
         body: SafeArea(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.base,
+              AppSpacing.base,
+              AppSpacing.base,
+              AppSpacing.formBottomInset,
+            ),
             child: Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 560),
+                constraints: const BoxConstraints(
+                  maxWidth: AppLayout.maxFormWidth,
+                ),
                 child: Form(
                   key: _formKey,
                   autovalidateMode: AutovalidateMode.onUserInteractionIfError,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
-                    spacing: 16,
+                    spacing: AppSpacing.base,
                     children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'CREDENTIALS & LICENSES',
+                            style: textTheme.labelSmall,
+                          ),
+                          const SizedBox(height: AppSpacing.xs),
+                          Text.rich(
+                            TextSpan(
+                              text: 'Tambah Sertifikasi',
+                              style: textTheme.headlineMedium,
+                              children: const [
+                                TextSpan(
+                                  text: '.',
+                                  style: TextStyle(color: AppColors.accent),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      Text(
+                        'INFORMASI SERTIFIKASI',
+                        style: textTheme.labelSmall,
+                      ),
                       _textField(
                         label: 'Nama Sertifikasi',
                         controller: _nameController,
@@ -288,6 +329,7 @@ class _CertificationFormPageState extends State<CertificationFormPage> {
                         label: 'Lembaga Penerbit',
                         controller: _organizationController,
                       ),
+                      Text('REFERENSI KREDENSIAL', style: textTheme.labelSmall),
                       _textField(
                         label: 'ID Kredensial',
                         controller: _credentialIdController,
@@ -297,6 +339,7 @@ class _CertificationFormPageState extends State<CertificationFormPage> {
                         controller: _credentialUrlController,
                         isUrl: true,
                       ),
+                      Text('MASA BERLAKU', style: textTheme.labelSmall),
                       _dateField(
                         key: _issueDateKey,
                         label: 'Tanggal Terbit',

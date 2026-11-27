@@ -1,9 +1,11 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:myportofolio_mobile/screens/certification_form.dart';
 import 'package:myportofolio_mobile/screens/certification_list_screen.dart';
+import 'package:myportofolio_mobile/screens/menu.dart';
 import 'package:myportofolio_mobile/screens/project_form.dart';
 import 'package:myportofolio_mobile/screens/project_list_screen.dart';
 import 'package:myportofolio_mobile/services/auth_state.dart';
+import 'package:myportofolio_mobile/theme/app_tokens.dart';
 import 'package:myportofolio_mobile/widgets/auth_guard.dart';
 import 'package:provider/provider.dart';
 
@@ -51,100 +53,258 @@ class _LeftDrawerState extends State<LeftDrawer> {
     }
   }
 
+  Widget _sectionLabel(BuildContext context, String label) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.base,
+        AppSpacing.sm,
+        AppSpacing.base,
+        2,
+      ),
+      child: Text(label, style: Theme.of(context).textTheme.labelSmall),
+    );
+  }
+
+  Widget _navItem(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required bool selected,
+    required VoidCallback onTap,
+    Color? foregroundColor,
+  }) {
+    final color =
+        foregroundColor ?? (selected ? AppColors.accent : AppColors.ink);
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: 1,
+      ),
+      child: ListTile(
+        dense: true,
+        minTileHeight: 48,
+        selected: selected,
+        selectedTileColor: AppColors.surfaceElevated,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          side: selected
+              ? const BorderSide(color: AppColors.line)
+              : BorderSide.none,
+        ),
+        leading: Icon(icon, color: color),
+        title: Text(
+          title,
+          style: TextStyle(
+            color: color,
+            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+          ),
+        ),
+        trailing: selected
+            ? Container(
+                width: 6,
+                height: 6,
+                decoration: const BoxDecoration(
+                  color: AppColors.accent,
+                  shape: BoxShape.circle,
+                ),
+              )
+            : null,
+        onTap: onTap,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isLoggedIn = context.watch<AuthState>().isLoggedIn;
+    final textTheme = Theme.of(context).textTheme;
+    final isHome = context.findAncestorWidgetOfExactType<MyHomePage>() != null;
+    final isProjects =
+        context.findAncestorWidgetOfExactType<ProjectListScreen>() != null;
+    final isAddProject =
+        context.findAncestorWidgetOfExactType<ProjectFormPage>() != null;
+    final isCertifications =
+        context.findAncestorWidgetOfExactType<CertificationListScreen>() !=
+        null;
+    final isAddCertification =
+        context.findAncestorWidgetOfExactType<CertificationFormPage>() != null;
+
     return Drawer(
-      child: ListView(
-        children: [
-          const DrawerHeader(
-            decoration: BoxDecoration(color: Colors.indigo),
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.topLeft,
+      child: SafeArea(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            Container(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.base,
+                AppSpacing.base,
+                AppSpacing.base,
+                AppSpacing.md,
+              ),
+              decoration: const BoxDecoration(
+                color: AppColors.paper,
+                border: Border(bottom: BorderSide(color: AppColors.line)),
+              ),
               child: Column(
-                mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'My Portfolio',
-                    style: TextStyle(
-                      fontSize: 30,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Flexible(
+                        child: Text(
+                          'My Portfolio',
+                          style: textTheme.titleLarge,
+                        ),
+                      ),
+                      Text(
+                        '.',
+                        style: textTheme.titleLarge?.copyWith(
+                          color: AppColors.accent,
+                        ),
+                      ),
+                    ],
                   ),
-                  SizedBox(height: 10),
+                  const SizedBox(height: 2),
                   Text(
                     'Explore personal projects and experiences!',
-                    style: TextStyle(fontSize: 15, color: Colors.white),
+                    style: textTheme.bodySmall,
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.sm,
+                      vertical: AppSpacing.xs,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceElevated,
+                      borderRadius: BorderRadius.circular(AppRadius.sm),
+                      border: Border.all(
+                        color: isLoggedIn ? AppColors.accent : AppColors.line,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 7,
+                          height: 7,
+                          decoration: BoxDecoration(
+                            color: isLoggedIn
+                                ? AppColors.accent
+                                : AppColors.muted,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.sm),
+                        Flexible(
+                          child: Text(
+                            isLoggedIn ? 'Authenticated' : 'Guest Mode',
+                            style: textTheme.bodySmall?.copyWith(
+                              color: isLoggedIn
+                                  ? AppColors.accent
+                                  : AppColors.muted,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
             ),
-          ),
-          ListTile(
-            leading: const Icon(Icons.home_outlined),
-            title: const Text('Home'),
-            onTap: () {
-              if (_busy) return;
-              _busy = true;
-              try {
-                _closeDrawer(context);
-                Navigator.of(context).popUntil((route) => route.isFirst);
-              } finally {
-                _busy = false;
-              }
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.folder_outlined),
-            title: const Text('View Projects'),
-            onTap: () => _openPage(context, const ProjectListScreen()),
-          ),
-          ListTile(
-            leading: const Icon(Icons.add_circle_outline),
-            title: const Text('Add Project'),
-            onTap: () => _openPage(
+            _sectionLabel(context, 'PORTFOLIO'),
+            _navItem(
               context,
-              const ProjectFormPage(),
-              requiresLogin: true,
-            ),
-          ),
-          ListTile(
-            leading: const Icon(Icons.card_membership_outlined),
-            title: const Text('View Certifications'),
-            onTap: () => _openPage(context, const CertificationListScreen()),
-          ),
-          ListTile(
-            leading: const Icon(Icons.workspace_premium_outlined),
-            title: const Text('Add Certification'),
-            onTap: () => _openPage(
-              context,
-              const CertificationFormPage(),
-              requiresLogin: true,
-            ),
-          ),
-          ListTile(
-            leading: Icon(isLoggedIn ? Icons.logout : Icons.login),
-            title: Text(isLoggedIn ? 'Logout' : 'Login'),
-            onTap: () async {
-              if (_busy) return;
-              _busy = true;
-              try {
-                final routeContext = Navigator.of(context).context;
-                _closeDrawer(context);
-                if (isLoggedIn) {
-                  await signOut(routeContext);
-                } else {
-                  await ensureLoggedIn(routeContext);
+              icon: Icons.home_outlined,
+              title: 'Home',
+              selected: isHome,
+              onTap: () {
+                if (_busy) return;
+                _busy = true;
+                try {
+                  _closeDrawer(context);
+                  Navigator.of(context).popUntil((route) => route.isFirst);
+                } finally {
+                  _busy = false;
                 }
-              } finally {
-                _busy = false;
-              }
-            },
-          ),
-        ],
+              },
+            ),
+            _navItem(
+              context,
+              icon: Icons.folder_outlined,
+              title: 'View Projects',
+              selected: isProjects,
+              onTap: () => _openPage(context, const ProjectListScreen()),
+            ),
+            _navItem(
+              context,
+              icon: Icons.card_membership_outlined,
+              title: 'View Certifications',
+              selected: isCertifications,
+              onTap: () => _openPage(context, const CertificationListScreen()),
+            ),
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: AppSpacing.xs),
+              child: Divider(),
+            ),
+            _sectionLabel(context, 'KELOLA DATA'),
+            _navItem(
+              context,
+              icon: Icons.add_circle_outline,
+              title: 'Add Project',
+              selected: isAddProject,
+              onTap: () => _openPage(
+                context,
+                const ProjectFormPage(),
+                requiresLogin: true,
+              ),
+            ),
+            _navItem(
+              context,
+              icon: Icons.workspace_premium_outlined,
+              title: 'Add Certification',
+              selected: isAddCertification,
+              onTap: () => _openPage(
+                context,
+                const CertificationFormPage(),
+                requiresLogin: true,
+              ),
+            ),
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: AppSpacing.xs),
+              child: Divider(),
+            ),
+            _sectionLabel(context, 'SESI'),
+            _navItem(
+              context,
+              icon: isLoggedIn ? Icons.logout : Icons.login,
+              title: isLoggedIn ? 'Logout' : 'Login',
+              selected: false,
+              foregroundColor: isLoggedIn
+                  ? AppColors.errorText
+                  : AppColors.accent,
+              onTap: () async {
+                if (_busy) return;
+                _busy = true;
+                try {
+                  final routeContext = Navigator.of(context).context;
+                  _closeDrawer(context);
+                  if (isLoggedIn) {
+                    await signOut(routeContext);
+                  } else {
+                    await ensureLoggedIn(routeContext);
+                  }
+                } finally {
+                  _busy = false;
+                }
+              },
+            ),
+            const SizedBox(height: AppSpacing.base),
+          ],
+        ),
       ),
     );
   }
