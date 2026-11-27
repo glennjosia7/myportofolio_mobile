@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:myportofolio_mobile/models/project.dart';
 import 'package:myportofolio_mobile/services/api_client.dart';
 import 'package:myportofolio_mobile/services/auth_state.dart';
+import 'package:myportofolio_mobile/theme/app_tokens.dart';
 import 'package:myportofolio_mobile/widgets/auth_guard.dart';
 import 'package:myportofolio_mobile/widgets/left_drawer.dart';
 import 'package:provider/provider.dart';
@@ -59,7 +60,7 @@ class _ProjectFormPageState extends State<ProjectFormPage> {
     keyboardType: keyboardType,
     decoration: InputDecoration(
       labelText: label,
-      border: const OutlineInputBorder(),
+      alignLabelWithHint: maxLines > 1,
       errorMaxLines: 4,
     ),
     validator: validator,
@@ -91,11 +92,18 @@ class _ProjectFormPageState extends State<ProjectFormPage> {
       await showDialog<void>(
         context: context,
         builder: (context) => AlertDialog(
-          title: const Text('Proyek berhasil ditambahkan!'),
+          title: const Row(
+            spacing: AppSpacing.sm,
+            children: [
+              Icon(Icons.check_circle_outline, color: AppColors.success),
+              Expanded(child: Text('Proyek berhasil ditambahkan!')),
+            ],
+          ),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
+              spacing: AppSpacing.xs,
               children: [
                 Text('Nama Proyek: ${project.title}'),
                 Text('Deskripsi: ${project.description}'),
@@ -135,76 +143,107 @@ class _ProjectFormPageState extends State<ProjectFormPage> {
   }
 
   @override
-  Widget build(BuildContext context) => PopScope(
-    canPop: !_submitting,
-    child: Scaffold(
-      appBar: AppBar(
-        title: const Text('Add Project Form'),
-        backgroundColor: Colors.indigo,
-        foregroundColor: Colors.white,
-      ),
-      drawer: _submitting ? null : const LeftDrawer(),
-      drawerEnableOpenDragGesture: !_submitting,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 560),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  spacing: 16,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _field(
-                      id: 'projectNameField',
-                      label: 'Nama Proyek',
-                      controller: _title,
-                      validator: (value) =>
-                          _required(value, 'Nama proyek', limit: 255),
-                    ),
-                    _field(
-                      id: 'descriptionField',
-                      label: 'Deskripsi Proyek',
-                      controller: _description,
-                      maxLines: 5,
-                      validator: (value) =>
-                          _required(value, 'Deskripsi proyek'),
-                    ),
-                    _field(
-                      id: 'technologiesField',
-                      label: 'Teknologi yang Digunakan',
-                      controller: _stack,
-                      validator: (value) =>
-                          _required(value, 'Teknologi', limit: 255),
-                    ),
-                    _field(
-                      id: 'projectLinkField',
-                      label: 'URL Proyek (opsional)',
-                      controller: _url,
-                      keyboardType: TextInputType.url,
-                      validator: (value) => _validateUrl(value, 200),
-                    ),
-                    _field(
-                      id: 'projectImageField',
-                      label: 'URL Gambar (opsional)',
-                      controller: _imageUrl,
-                      keyboardType: TextInputType.url,
-                      validator: (value) => _validateUrl(value, 500),
-                    ),
-                    FilledButton(
-                      key: const Key('saveButton'),
-                      onPressed: _submitting ? null : _saveForm,
-                      child: Text(_submitting ? 'Memproses…' : 'Save'),
-                    ),
-                  ],
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    return PopScope(
+      canPop: !_submitting,
+      child: Scaffold(
+        appBar: AppBar(title: const Text('Add Project Form')),
+        drawer: _submitting ? null : const LeftDrawer(),
+        drawerEnableOpenDragGesture: !_submitting,
+        body: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.base,
+              AppSpacing.base,
+              AppSpacing.base,
+              AppSpacing.formBottomInset,
+            ),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(
+                  maxWidth: AppLayout.maxFormWidth,
+                ),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    spacing: AppSpacing.base,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('KARYA BARU', style: textTheme.labelSmall),
+                          const SizedBox(height: AppSpacing.xs),
+                          Text.rich(
+                            TextSpan(
+                              text: 'Tambah Proyek',
+                              style: textTheme.headlineMedium,
+                              children: const [
+                                TextSpan(
+                                  text: '.',
+                                  style: TextStyle(color: AppColors.accent),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      Text('INFORMASI PROYEK', style: textTheme.labelSmall),
+                      _field(
+                        id: 'projectNameField',
+                        label: 'Nama Proyek',
+                        controller: _title,
+                        validator: (value) =>
+                            _required(value, 'Nama proyek', limit: 255),
+                      ),
+                      _field(
+                        id: 'descriptionField',
+                        label: 'Deskripsi Proyek',
+                        controller: _description,
+                        maxLines: 5,
+                        validator: (value) =>
+                            _required(value, 'Deskripsi proyek'),
+                      ),
+                      _field(
+                        id: 'technologiesField',
+                        label: 'Teknologi yang Digunakan',
+                        controller: _stack,
+                        validator: (value) =>
+                            _required(value, 'Teknologi', limit: 255),
+                      ),
+                      const Divider(),
+                      Text(
+                        'TAUTAN & MEDIA (OPSIONAL)',
+                        style: textTheme.labelSmall,
+                      ),
+                      _field(
+                        id: 'projectLinkField',
+                        label: 'URL Proyek (opsional)',
+                        controller: _url,
+                        keyboardType: TextInputType.url,
+                        validator: (value) => _validateUrl(value, 200),
+                      ),
+                      _field(
+                        id: 'projectImageField',
+                        label: 'URL Gambar (opsional)',
+                        controller: _imageUrl,
+                        keyboardType: TextInputType.url,
+                        validator: (value) => _validateUrl(value, 500),
+                      ),
+                      FilledButton(
+                        key: const Key('saveButton'),
+                        onPressed: _submitting ? null : _saveForm,
+                        child: Text(_submitting ? 'Memproses…' : 'Save'),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
         ),
       ),
-    ),
-  );
+    );
+  }
 }
